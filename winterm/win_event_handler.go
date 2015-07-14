@@ -3,6 +3,7 @@
 package winterm
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -18,9 +19,10 @@ type WindowsAnsiEventHandler struct {
 	file      *os.File
 	infoReset *CONSOLE_SCREEN_BUFFER_INFO
 	sr        scrollRegion
+	buffer    bytes.Buffer
 }
 
-func CreateWinEventHandler(fd uintptr, file *os.File) *WindowsAnsiEventHandler {
+func CreateWinEventHandler(fd uintptr, file *os.File) AnsiEventHandler {
 	logFile := ioutil.Discard
 
 	if isDebugEnv := os.Getenv(LogEnv); isDebugEnv == "1" {
@@ -54,28 +56,23 @@ type scrollRegion struct {
 }
 
 func (h *WindowsAnsiEventHandler) Print(b byte) error {
-	logger.Infof("Print: [%v]", string(b))
-
-	bytes := []byte{b}
-
-	_, err := h.file.Write(bytes)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return h.buffer.WriteByte(b)
 }
 
 func (h *WindowsAnsiEventHandler) Execute(b byte) error {
-	logger.Infof("Execute %#x", b)
+	if ANSI_LINE_FEED == b {
+		info, err := GetConsoleScreenBufferInfo(h.fd)
+		if err != nil {
+			return err
+		}
 
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
-		return err
-	}
+		if int(info.CursorPosition.Y) == h.sr.bottom {
+			if err := h.Flush(); err != nil {
+				return err
+			}
 
-	if int(info.CursorPosition.Y) == h.sr.bottom {
-		if ANSI_LINE_FEED == b {
+			logger.Infof("Scrolling due to LF at bottom of scroll region")
+
 			// Scroll up one row if we attempt to line feed at the bottom
 			// of the scroll region
 			if err := h.scrollUp(1); err != nil {
@@ -93,48 +90,72 @@ func (h *WindowsAnsiEventHandler) Execute(b byte) error {
 	}
 
 	if ANSI_BEL <= b && b <= ANSI_CARRIAGE_RETURN {
-		return h.Print(b)
+		return h.buffer.WriteByte(b)
 	}
 
 	return nil
 }
 
 func (h *WindowsAnsiEventHandler) CUU(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("CUU: [%v]", []string{strconv.Itoa(param)})
 	return h.moveCursorVertical(-param)
 }
 
 func (h *WindowsAnsiEventHandler) CUD(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("CUD: [%v]", []string{strconv.Itoa(param)})
 	return h.moveCursorVertical(param)
 }
 
 func (h *WindowsAnsiEventHandler) CUF(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("CUF: [%v]", []string{strconv.Itoa(param)})
 	return h.moveCursorHorizontal(param)
 }
 
 func (h *WindowsAnsiEventHandler) CUB(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("CUB: [%v]", []string{strconv.Itoa(param)})
 	return h.moveCursorHorizontal(-param)
 }
 
 func (h *WindowsAnsiEventHandler) CNL(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("CNL: [%v]", []string{strconv.Itoa(param)})
 	return h.moveCursorLine(param)
 }
 
 func (h *WindowsAnsiEventHandler) CPL(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("CPL: [%v]", []string{strconv.Itoa(param)})
 	return h.moveCursorLine(-param)
 }
 
 func (h *WindowsAnsiEventHandler) CHA(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("CHA: [%v]", []string{strconv.Itoa(param)})
 	return h.moveCursorColumn(param)
 }
 
 func (h *WindowsAnsiEventHandler) CUP(row int, col int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	rowStr, colStr := strconv.Itoa(row), strconv.Itoa(col)
 	logger.Infof("CUP: [%v]", []string{rowStr, colStr})
 	info, err := GetConsoleScreenBufferInfo(h.fd)
@@ -151,18 +172,27 @@ func (h *WindowsAnsiEventHandler) CUP(row int, col int) error {
 }
 
 func (h *WindowsAnsiEventHandler) HVP(row int, col int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	rowS, colS := strconv.Itoa(row), strconv.Itoa(row)
 	logger.Infof("HVP: [%v]", []string{rowS, colS})
 	return h.CUP(row, col)
 }
 
 func (h *WindowsAnsiEventHandler) DECTCEM(visible bool) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("DECTCEM: [%v]", []string{strconv.FormatBool(visible)})
 
 	return nil
 }
 
 func (h *WindowsAnsiEventHandler) ED(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("ED: [%v]", []string{strconv.Itoa(param)})
 
 	// [J  -- Erases from the cursor to the end of the screen, including the cursor position.
@@ -215,6 +245,9 @@ func (h *WindowsAnsiEventHandler) ED(param int) error {
 }
 
 func (h *WindowsAnsiEventHandler) EL(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("EL: [%v]", strconv.Itoa(param))
 
 	// [K  -- Erases from the cursor to the end of the line, including the cursor position.
@@ -252,6 +285,9 @@ func (h *WindowsAnsiEventHandler) EL(param int) error {
 }
 
 func (h *WindowsAnsiEventHandler) IL(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("IL: [%v]", strconv.Itoa(param))
 	if err := h.scrollDown(param); err != nil {
 		return err
@@ -261,11 +297,17 @@ func (h *WindowsAnsiEventHandler) IL(param int) error {
 }
 
 func (h *WindowsAnsiEventHandler) DL(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("DL: [%v]", strconv.Itoa(param))
 	return h.scrollUp(param)
 }
 
 func (h *WindowsAnsiEventHandler) SGR(params []int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	strings := []string{}
 	for _, v := range params {
 		logger.Infof("SGR: [%v]", strings)
@@ -303,11 +345,17 @@ func (h *WindowsAnsiEventHandler) SGR(params []int) error {
 }
 
 func (h *WindowsAnsiEventHandler) SU(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("SU: [%v]", []string{strconv.Itoa(param)})
 	return h.scrollPageUp()
 }
 
 func (h *WindowsAnsiEventHandler) SD(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("SD: [%v]", []string{strconv.Itoa(param)})
 	return h.scrollPageDown()
 }
@@ -324,11 +372,8 @@ func (h *WindowsAnsiEventHandler) DA(params []string) error {
 		// Respond with:
 		// "I am a VT220 version 1.0, no options.
 		//                    CSI     >     1     ;     1     0     ;     0     c    CR    LF
-		bytes := []byte{CSI_ENTRY, 0x3E, 0x31, 0x3B, 0x31, 0x30, 0x3B, 0x30, 0x63, 0x0D, 0x0A}
+		h.buffer.Write([]byte{CSI_ENTRY, 0x3E, 0x31, 0x3B, 0x31, 0x30, 0x3B, 0x30, 0x63, 0x0D, 0x0A})
 
-		for _, b := range bytes {
-			h.Print(b)
-		}
 	} else {
 		// Primary device attribute request:
 		// Respond with:
@@ -336,11 +381,7 @@ func (h *WindowsAnsiEventHandler) DA(params []string) error {
 		// printer port (2), selective erase (6), DRCS (7), UDK (8),
 		// and I support 7-bit national replacement character sets (9)."
 		//                    CSI     ?     6     2     ;     1     ;     2     ;     6     ;     7     ;     8     ;     9     c    CR    LF
-		bytes := []byte{CSI_ENTRY, 0x3F, 0x36, 0x32, 0x3B, 0x31, 0x3B, 0x32, 0x3B, 0x36, 0x3B, 0x37, 0x3B, 0x38, 0x3B, 0x39, 0x63, 0x0D, 0x0A}
-
-		for _, b := range bytes {
-			h.Print(b)
-		}
+		h.buffer.Write([]byte{CSI_ENTRY, 0x3F, 0x36, 0x32, 0x3B, 0x31, 0x3B, 0x32, 0x3B, 0x36, 0x3B, 0x37, 0x3B, 0x38, 0x3B, 0x39, 0x63, 0x0D, 0x0A})
 	}
 
 	return nil
@@ -357,6 +398,9 @@ func (h *WindowsAnsiEventHandler) DECSTBM(top int, bottom int) error {
 }
 
 func (h *WindowsAnsiEventHandler) RI() error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Info("RI: []")
 
 	info, err := GetConsoleScreenBufferInfo(h.fd)
@@ -373,4 +417,14 @@ func (h *WindowsAnsiEventHandler) RI() error {
 	} else {
 		return h.CUU(1)
 	}
+}
+
+func (h *WindowsAnsiEventHandler) Flush() error {
+	if h.buffer.Len() > 0 {
+		logger.Infof("Flush: [%s]", h.buffer.Bytes())
+		if _, err := h.buffer.WriteTo(h.file); err != nil {
+			return err
+		}
+	}
+	return nil
 }

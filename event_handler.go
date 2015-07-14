@@ -66,4 +66,7 @@ type AnsiEventHandler interface {
 
 	// Reverse Index
 	RI() error
+
+	// Flush updates from previous commands
+	Flush() error
 }

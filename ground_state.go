@@ -5,7 +5,6 @@ type GroundState struct {
 }
 
 func (gs GroundState) Handle(b byte) (s State, e error) {
-	logger.Infof("Ground::Handle %#x", b)
 	gs.parser.context.currentChar = b
 
 	nextState, err := gs.BaseState.Handle(b)

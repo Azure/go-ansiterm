@@ -87,7 +87,7 @@ func (ap *AnsiParser) Parse(bytes []byte) (int, error) {
 		}
 	}
 
-	return len(bytes), nil
+	return len(bytes), ap.eventHandler.Flush()
 }
 
 func (ap *AnsiParser) handle(b byte) error {
