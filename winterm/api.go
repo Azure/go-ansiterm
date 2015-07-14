@@ -40,7 +40,6 @@ var (
 	scrollConsoleScreenBufferProc  = kernel32DLL.NewProc("ScrollConsoleScreenBufferA")
 	setConsoleTextAttributeProc    = kernel32DLL.NewProc("SetConsoleTextAttribute")
 	setConsoleWindowInfoProc       = kernel32DLL.NewProc("SetConsoleWindowInfo")
-	getCurrentConsoleFontProc      = kernel32DLL.NewProc("GetCurrentConsoleFont")
 	writeConsoleOutputProc         = kernel32DLL.NewProc("WriteConsoleOutputW")
 	readConsoleInputProc           = kernel32DLL.NewProc("ReadConsoleInputW")
 	waitForSingleObjectProc        = kernel32DLL.NewProc("WaitForSingleObject")
@@ -123,11 +122,6 @@ type (
 	CONSOLE_CURSOR_INFO struct {
 		Size    DWORD
 		Visible BOOL
-	}
-
-	CONSOLE_FONT_INFO struct {
-		Font     DWORD
-		FontSize COORD
 	}
 
 	CONSOLE_SCREEN_BUFFER_INFO struct {
@@ -262,17 +256,6 @@ func SetConsoleWindowInfo(handle uintptr, isAbsolute bool, rect SMALL_RECT) erro
 	use(isAbsolute)
 	use(rect)
 	return checkError(r1, r2, err)
-}
-
-// GetCurrentConsoleFont retrieves the pixel dimensions of the font for the current window.
-// See https://msdn.microsoft.com/en-us/library/windows/desktop/ms683176(v=vs.85).aspx.
-func GetCurrentConsoleFont(handle uintptr) (*CONSOLE_FONT_INFO, error) {
-	info := CONSOLE_FONT_INFO{}
-	err := checkError(getCurrentConsoleFontProc.Call(handle, uintptr(BOOL(0)), uintptr(unsafe.Pointer(&info))))
-	if err != nil {
-		return nil, err
-	}
-	return &info, nil
 }
 
 // WriteConsoleOutput writes the CHAR_INFOs from the provided buffer to the active console buffer.
