@@ -6,6 +6,11 @@ import (
 	. "github.com/Azure/go-ansiterm"
 )
 
+const (
+	FOREGROUND_COLOR_MASK = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE
+	BACKGROUND_COLOR_MASK = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE
+)
+
 // collectAnsiIntoWindowsAttributes modifies the passed Windows text mode flags to reflect the
 // request represented by the passed ANSI mode.
 func collectAnsiIntoWindowsAttributes(windowsMode WORD, baseMode WORD, ansiMode SHORT) WORD {
@@ -30,60 +35,60 @@ func collectAnsiIntoWindowsAttributes(windowsMode WORD, baseMode WORD, ansiMode 
 
 		// Foreground colors
 	case ANSI_SGR_FOREGROUND_DEFAULT:
-		windowsMode = (windowsMode & ^FOREGROUND_MASK) | (baseMode & FOREGROUND_MASK)
+		windowsMode = (windowsMode &^ FOREGROUND_MASK) | (baseMode & FOREGROUND_MASK)
 
 	case ANSI_SGR_FOREGROUND_BLACK:
-		windowsMode = windowsMode ^ (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
+		windowsMode = (windowsMode &^ FOREGROUND_COLOR_MASK)
 
 	case ANSI_SGR_FOREGROUND_RED:
-		windowsMode = (windowsMode & ^FOREGROUND_MASK) | FOREGROUND_RED
+		windowsMode = (windowsMode &^ FOREGROUND_COLOR_MASK) | FOREGROUND_RED
 
 	case ANSI_SGR_FOREGROUND_GREEN:
-		windowsMode = (windowsMode & ^FOREGROUND_MASK) | FOREGROUND_GREEN
+		windowsMode = (windowsMode &^ FOREGROUND_COLOR_MASK) | FOREGROUND_GREEN
 
 	case ANSI_SGR_FOREGROUND_YELLOW:
-		windowsMode = (windowsMode & ^FOREGROUND_MASK) | FOREGROUND_RED | FOREGROUND_GREEN
+		windowsMode = (windowsMode &^ FOREGROUND_COLOR_MASK) | FOREGROUND_RED | FOREGROUND_GREEN
 
 	case ANSI_SGR_FOREGROUND_BLUE:
-		windowsMode = (windowsMode & ^FOREGROUND_MASK) | FOREGROUND_BLUE
+		windowsMode = (windowsMode &^ FOREGROUND_COLOR_MASK) | FOREGROUND_BLUE
 
 	case ANSI_SGR_FOREGROUND_MAGENTA:
-		windowsMode = (windowsMode & ^FOREGROUND_MASK) | FOREGROUND_RED | FOREGROUND_BLUE
+		windowsMode = (windowsMode &^ FOREGROUND_COLOR_MASK) | FOREGROUND_RED | FOREGROUND_BLUE
 
 	case ANSI_SGR_FOREGROUND_CYAN:
-		windowsMode = (windowsMode & ^FOREGROUND_MASK) | FOREGROUND_GREEN | FOREGROUND_BLUE
+		windowsMode = (windowsMode &^ FOREGROUND_COLOR_MASK) | FOREGROUND_GREEN | FOREGROUND_BLUE
 
 	case ANSI_SGR_FOREGROUND_WHITE:
-		windowsMode = (windowsMode & ^FOREGROUND_MASK) | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE
+		windowsMode = (windowsMode &^ FOREGROUND_COLOR_MASK) | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE
 
 		// Background colors
 	case ANSI_SGR_BACKGROUND_DEFAULT:
 		// Black with no intensity
-		windowsMode = (windowsMode & ^BACKGROUND_MASK) | (baseMode & BACKGROUND_MASK)
+		windowsMode = (windowsMode &^ BACKGROUND_MASK) | (baseMode & BACKGROUND_MASK)
 
 	case ANSI_SGR_BACKGROUND_BLACK:
-		windowsMode = (windowsMode & ^BACKGROUND_MASK)
+		windowsMode = (windowsMode &^ BACKGROUND_COLOR_MASK)
 
 	case ANSI_SGR_BACKGROUND_RED:
-		windowsMode = (windowsMode & ^BACKGROUND_MASK) | BACKGROUND_RED
+		windowsMode = (windowsMode &^ BACKGROUND_COLOR_MASK) | BACKGROUND_RED
 
 	case ANSI_SGR_BACKGROUND_GREEN:
-		windowsMode = (windowsMode & ^BACKGROUND_MASK) | BACKGROUND_GREEN
+		windowsMode = (windowsMode &^ BACKGROUND_COLOR_MASK) | BACKGROUND_GREEN
 
 	case ANSI_SGR_BACKGROUND_YELLOW:
-		windowsMode = (windowsMode & ^BACKGROUND_MASK) | BACKGROUND_RED | BACKGROUND_GREEN
+		windowsMode = (windowsMode &^ BACKGROUND_COLOR_MASK) | BACKGROUND_RED | BACKGROUND_GREEN
 
 	case ANSI_SGR_BACKGROUND_BLUE:
-		windowsMode = (windowsMode & ^BACKGROUND_MASK) | BACKGROUND_BLUE
+		windowsMode = (windowsMode &^ BACKGROUND_COLOR_MASK) | BACKGROUND_BLUE
 
 	case ANSI_SGR_BACKGROUND_MAGENTA:
-		windowsMode = (windowsMode & ^BACKGROUND_MASK) | BACKGROUND_RED | BACKGROUND_BLUE
+		windowsMode = (windowsMode &^ BACKGROUND_COLOR_MASK) | BACKGROUND_RED | BACKGROUND_BLUE
 
 	case ANSI_SGR_BACKGROUND_CYAN:
-		windowsMode = (windowsMode & ^BACKGROUND_MASK) | BACKGROUND_GREEN | BACKGROUND_BLUE
+		windowsMode = (windowsMode &^ BACKGROUND_COLOR_MASK) | BACKGROUND_GREEN | BACKGROUND_BLUE
 
 	case ANSI_SGR_BACKGROUND_WHITE:
-		windowsMode = (windowsMode & ^BACKGROUND_MASK) | BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE
+		windowsMode = (windowsMode &^ BACKGROUND_COLOR_MASK) | BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE
 	}
 
 	return windowsMode
