@@ -137,3 +137,7 @@ func (h *TestAnsiEventHandler) RI() error {
 	h.recordCall("RI", nil)
 	return nil
 }
+
+func (h *TestAnsiEventHandler) Flush() error {
+	return nil
+}

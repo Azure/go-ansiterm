@@ -95,7 +95,6 @@ func (ap *AnsiParser) csiDispatch() error {
 }
 
 func (ap *AnsiParser) print() error {
-	logger.Infof("AnsiParser::print %#x", ap.context.currentChar)
 	return ap.eventHandler.Print(ap.context.currentChar)
 }
 
@@ -105,8 +104,5 @@ func (ap *AnsiParser) clear() error {
 }
 
 func (ap *AnsiParser) execute() error {
-	logger.Infof("AnsiParser::execute %#x", ap.context.currentChar)
-
 	return ap.eventHandler.Execute(ap.context.currentChar)
-
 }
