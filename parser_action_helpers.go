@@ -46,6 +46,10 @@ func getInts(params []string, minCount int, dflt int) []int {
 
 	for _, v := range params {
 		i, _ := strconv.Atoi(v)
+		// Zero is mapped to the default value in VT100.
+		if i == 0 {
+			i = dflt
+		}
 		ints = append(ints, i)
 	}
 
