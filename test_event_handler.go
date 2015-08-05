@@ -65,6 +65,11 @@ func (h *TestAnsiEventHandler) CHA(param int) error {
 	return nil
 }
 
+func (h *TestAnsiEventHandler) VPA(param int) error {
+	h.recordCall("VPA", []string{strconv.Itoa(param)})
+	return nil
+}
+
 func (h *TestAnsiEventHandler) CUP(x int, y int) error {
 	xS, yS := strconv.Itoa(x), strconv.Itoa(y)
 	h.recordCall("CUP", []string{xS, yS})
