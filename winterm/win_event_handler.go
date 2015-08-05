@@ -341,6 +341,7 @@ func (h *WindowsAnsiEventHandler) SGR(params []int) error {
 
 			if attr == ANSI_SGR_RESET {
 				h.attributes = h.infoReset.Attributes
+				h.inverted = false
 				continue
 			}
 
