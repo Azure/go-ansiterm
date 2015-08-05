@@ -613,6 +613,11 @@ func (h *WindowsAnsiEventHandler) RI() error {
 	}
 }
 
+func (h *WindowsAnsiEventHandler) IND() error {
+	logger.Info("IND: []")
+	return h.executeLF()
+}
+
 func (h *WindowsAnsiEventHandler) Flush() error {
 	h.curInfo = nil
 	if h.buffer.Len() > 0 {
