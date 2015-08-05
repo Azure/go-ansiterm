@@ -155,6 +155,20 @@ func (h *WindowsAnsiEventHandler) CHA(param int) error {
 	return h.moveCursorColumn(param)
 }
 
+func (h *WindowsAnsiEventHandler) VPA(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
+	logger.Infof("VPA: [[%d]]", param)
+	info, err := GetConsoleScreenBufferInfo(h.fd)
+	if err != nil {
+		return err
+	}
+	pos := info.CursorPosition
+	pos.Y = ensureInRange(SHORT(param-1), info.Window.Top, info.Window.Bottom)
+	return SetConsoleCursorPosition(h.fd, pos)
+}
+
 func (h *WindowsAnsiEventHandler) CUP(row int, col int) error {
 	if err := h.Flush(); err != nil {
 		return err

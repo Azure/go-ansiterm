@@ -28,6 +28,9 @@ type AnsiEventHandler interface {
 	// Cursor Horizontal position Absolute
 	CHA(int) error
 
+	// Vertical line Position Absolute
+	VPA(int) error
+
 	// CUrsor Position
 	CUP(int, int) error
 

@@ -73,6 +73,8 @@ func (ap *AnsiParser) csiDispatch() error {
 		return ap.eventHandler.SD(getInt(params, 1))
 	case "c":
 		return ap.eventHandler.DA(params)
+	case "d":
+		return ap.eventHandler.VPA(getInt(params, 1))
 	case "f":
 		ints := getInts(params, 2, 1)
 		x, y := ints[0], ints[1]
