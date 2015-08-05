@@ -31,7 +31,7 @@ func (h *WindowsAnsiEventHandler) moveCursor(moveMode int, param int) error {
 	position := info.CursorPosition
 	switch moveMode {
 	case Horizontal:
-		position.X = AddInRange(position.X, SHORT(param), info.Window.Left, info.Window.Right)
+		position.X = AddInRange(position.X, SHORT(param), 0, info.Size.X-1)
 	case Vertical:
 		position.Y = AddInRange(position.Y, SHORT(param), info.Window.Top, info.Window.Bottom)
 	}
@@ -69,7 +69,7 @@ func (h *WindowsAnsiEventHandler) moveCursorColumn(param int) error {
 	}
 
 	position := info.CursorPosition
-	position.X = AddInRange(SHORT(param), -1, info.Window.Left, info.Window.Right)
+	position.X = AddInRange(SHORT(param), -1, 0, info.Size.X-1)
 
 	if err = h.setCursorPosition(position, info.Size); err != nil {
 		return err

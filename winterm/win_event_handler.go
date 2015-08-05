@@ -42,20 +42,17 @@ func CreateWinEventHandler(fd uintptr, file *os.File) AnsiEventHandler {
 		return nil
 	}
 
-	sr := scrollRegion{int(infoReset.Window.Top), int(infoReset.Window.Bottom)}
-
 	return &WindowsAnsiEventHandler{
 		fd:         fd,
 		file:       file,
 		infoReset:  infoReset,
-		sr:         sr,
 		attributes: infoReset.Attributes,
 	}
 }
 
 type scrollRegion struct {
-	top    int
-	bottom int
+	top    SHORT
+	bottom SHORT
 }
 
 func (h *WindowsAnsiEventHandler) Print(b byte) error {
@@ -69,7 +66,7 @@ func (h *WindowsAnsiEventHandler) Execute(b byte) error {
 			return err
 		}
 
-		if int(info.CursorPosition.Y) == h.sr.bottom {
+		if info.CursorPosition.Y == h.effectiveSr(info.Window).bottom {
 			if err := h.Flush(); err != nil {
 				return err
 			}
@@ -81,14 +78,7 @@ func (h *WindowsAnsiEventHandler) Execute(b byte) error {
 			if err := h.scrollUp(1); err != nil {
 				return err
 			}
-
-			// Clear line
-			// if err := h.CUD(1); err != nil {
-			// 	return err
-			// }
-			if err := h.EL(0); err != nil {
-				return err
-			}
+            return h.moveCursorColumn(1)
 		}
 	}
 
@@ -182,7 +172,7 @@ func (h *WindowsAnsiEventHandler) CUP(row int, col int) error {
 
 	rect := info.Window
 	rowS := AddInRange(SHORT(row-1), rect.Top, rect.Top, rect.Bottom)
-	colS := AddInRange(SHORT(col-1), rect.Left, rect.Left, rect.Right)
+	colS := ensureInRange(SHORT(col-1), 0, info.Size.X-1)
 	position := COORD{colS, rowS}
 
 	return h.setCursorPosition(position, info.Size)
@@ -404,13 +394,17 @@ func (h *WindowsAnsiEventHandler) DA(params []string) error {
 }
 
 func (h *WindowsAnsiEventHandler) DECSTBM(top int, bottom int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
 	logger.Infof("DECSTBM: [%d, %d]", top, bottom)
 
 	// Windows is 0 indexed, Linux is 1 indexed
-	h.sr.top = top - 1
-	h.sr.bottom = bottom - 1
+	h.sr.top = SHORT(top - 1)
+	h.sr.bottom = SHORT(bottom - 1)
 
-	return nil
+	// This command also moves the cursor to the origin.
+	return h.CUP(1,1)
 }
 
 func (h *WindowsAnsiEventHandler) RI() error {
