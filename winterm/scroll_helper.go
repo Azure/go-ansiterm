@@ -79,7 +79,7 @@ func (h *WindowsAnsiEventHandler) scroll(param int) error {
 
 	char := CHAR_INFO{
 		UnicodeChar: ' ',
-		Attributes:  0,
+		Attributes:  h.attributes,
 	}
 
 	if err := ScrollConsoleScreenBuffer(h.fd, scrollRect, clipRegion, destOrigin, char); err != nil {

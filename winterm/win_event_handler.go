@@ -15,11 +15,13 @@ import (
 var logger *logrus.Logger
 
 type WindowsAnsiEventHandler struct {
-	fd        uintptr
-	file      *os.File
-	infoReset *CONSOLE_SCREEN_BUFFER_INFO
-	sr        scrollRegion
-	buffer    bytes.Buffer
+	fd         uintptr
+	file       *os.File
+	infoReset  *CONSOLE_SCREEN_BUFFER_INFO
+	sr         scrollRegion
+	buffer     bytes.Buffer
+	attributes WORD
+	inverted   bool
 }
 
 func CreateWinEventHandler(fd uintptr, file *os.File) AnsiEventHandler {
@@ -43,10 +45,11 @@ func CreateWinEventHandler(fd uintptr, file *os.File) AnsiEventHandler {
 	sr := scrollRegion{int(infoReset.Window.Top), int(infoReset.Window.Bottom)}
 
 	return &WindowsAnsiEventHandler{
-		fd:        fd,
-		file:      file,
-		infoReset: infoReset,
-		sr:        sr,
+		fd:         fd,
+		file:       file,
+		infoReset:  infoReset,
+		sr:         sr,
+		attributes: infoReset.Attributes,
 	}
 }
 
@@ -229,7 +232,7 @@ func (h *WindowsAnsiEventHandler) ED(param int) error {
 		end = COORD{info.Size.X - 1, info.Size.Y - 1}
 	}
 
-	err = h.clearRange(info.Attributes, start, end)
+	err = h.clearRange(h.attributes, start, end)
 	if err != nil {
 		return err
 	}
@@ -276,7 +279,7 @@ func (h *WindowsAnsiEventHandler) EL(param int) error {
 		end = COORD{info.Size.X, info.CursorPosition.Y}
 	}
 
-	err = h.clearRange(info.Attributes, start, end)
+	err = h.clearRange(h.attributes, start, end)
 	if err != nil {
 		return err
 	}
@@ -316,27 +319,26 @@ func (h *WindowsAnsiEventHandler) SGR(params []int) error {
 
 	logger.Infof("SGR: [%v]", strings)
 
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
-		return err
-	}
-
-	attributes := info.Attributes
 	if len(params) <= 0 {
-		attributes = h.infoReset.Attributes
+		h.attributes = h.infoReset.Attributes
+		h.inverted = false
 	} else {
 		for _, attr := range params {
 
 			if attr == ANSI_SGR_RESET {
-				attributes = h.infoReset.Attributes
+				h.attributes = h.infoReset.Attributes
 				continue
 			}
 
-			attributes = collectAnsiIntoWindowsAttributes(attributes, h.infoReset.Attributes, SHORT(attr))
+			h.attributes, h.inverted = collectAnsiIntoWindowsAttributes(h.attributes, h.inverted, h.infoReset.Attributes, SHORT(attr))
 		}
 	}
 
-	err = SetConsoleTextAttribute(h.fd, attributes)
+	attributes := h.attributes
+	if h.inverted {
+		attributes = invertAttributes(attributes)
+	}
+	err := SetConsoleTextAttribute(h.fd, attributes)
 	if err != nil {
 		return err
 	}
