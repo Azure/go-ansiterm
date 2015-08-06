@@ -24,6 +24,7 @@ type WindowsAnsiEventHandler struct {
 	inverted       bool
 	wrapNext       bool
 	drewMarginByte bool
+	originMode     bool
 	marginByte     byte
 	curInfo        *CONSOLE_SCREEN_BUFFER_INFO
 	curPos         COORD
@@ -336,9 +337,10 @@ func (h *WindowsAnsiEventHandler) VPA(param int) error {
 	if err != nil {
 		return err
 	}
-	pos := info.CursorPosition
-	pos.Y = AddInRange(info.Window.Top, SHORT(param-1), info.Window.Top, info.Window.Bottom)
-	return SetConsoleCursorPosition(h.fd, pos)
+	window := h.getCursorWindow(info)
+	position := info.CursorPosition
+	position.Y = window.Top + SHORT(param) - 1
+	return h.setCursorPosition(position, window)
 }
 
 func (h *WindowsAnsiEventHandler) CUP(row int, col int) error {
@@ -352,12 +354,9 @@ func (h *WindowsAnsiEventHandler) CUP(row int, col int) error {
 		return err
 	}
 
-	rect := info.Window
-	rowS := AddInRange(SHORT(row-1), rect.Top, rect.Top, rect.Bottom)
-	colS := ensureInRange(SHORT(col-1), 0, info.Size.X-1)
-	position := COORD{colS, rowS}
-
-	return h.setCursorPosition(position, info.Size)
+	window := h.getCursorWindow(info)
+	position := COORD{window.Left + SHORT(col) - 1, window.Top + SHORT(row) - 1}
+	return h.setCursorPosition(position, window)
 }
 
 func (h *WindowsAnsiEventHandler) HVP(row int, col int) error {
@@ -376,6 +375,16 @@ func (h *WindowsAnsiEventHandler) DECTCEM(visible bool) error {
 	logger.Infof("DECTCEM: [%v]", []string{strconv.FormatBool(visible)})
 	h.clearWrap()
 	return nil
+}
+
+func (h *WindowsAnsiEventHandler) DECOM(enable bool) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
+	logger.Infof("DECOM: [%v]", []string{strconv.FormatBool(enable)})
+	h.clearWrap()
+	h.originMode = enable
+	return h.CUP(1, 1)
 }
 
 func (h *WindowsAnsiEventHandler) ED(param int) error {

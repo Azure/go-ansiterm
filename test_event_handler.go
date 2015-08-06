@@ -87,6 +87,11 @@ func (h *TestAnsiEventHandler) DECTCEM(visible bool) error {
 	return nil
 }
 
+func (h *TestAnsiEventHandler) DECOM(visible bool) error {
+	h.recordCall("DECOM", []string{strconv.FormatBool(visible)})
+	return nil
+}
+
 func (h *TestAnsiEventHandler) ED(param int) error {
 	h.recordCall("ED", []string{strconv.Itoa(param)})
 	return nil

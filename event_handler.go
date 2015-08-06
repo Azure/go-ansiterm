@@ -40,6 +40,9 @@ type AnsiEventHandler interface {
 	// Text Cursor Enable Mode
 	DECTCEM(bool) error
 
+	// Origin Mode
+	DECOM(bool) error
+
 	// Erase in Display
 	ED(int) error
 
