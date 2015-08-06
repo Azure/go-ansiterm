@@ -2,6 +2,17 @@
 
 package winterm
 
+// effectiveSr gets the current effective scroll region in buffer coordinates
+func (h *WindowsAnsiEventHandler) effectiveSr(window SMALL_RECT) scrollRegion {
+	top := AddInRange(window.Top, h.sr.top, window.Top, window.Bottom)
+	bottom := AddInRange(window.Top, h.sr.bottom, window.Top, window.Bottom)
+	if top >= bottom {
+		top = window.Top
+		bottom = window.Bottom
+	}
+	return scrollRegion{top: top, bottom: bottom}
+}
+
 func (h *WindowsAnsiEventHandler) scrollPageUp() error {
 	return h.scrollPage(1)
 }
@@ -16,65 +27,40 @@ func (h *WindowsAnsiEventHandler) scrollPage(param int) error {
 		return err
 	}
 
-	tmpScrollTop := h.sr.top
-	tmpScrollBottom := h.sr.bottom
-
-	// Set scroll region to whole window
-	h.sr.top = 0
-	h.sr.bottom = int(info.Size.Y - 1)
-
-	err = h.scroll(param)
-
-	h.sr.top = tmpScrollTop
-	h.sr.bottom = tmpScrollBottom
-
-	return err
+	return h.scroll(param, scrollRegion{info.Window.Top, info.Window.Bottom}, info)
 }
 
 func (h *WindowsAnsiEventHandler) scrollUp(param int) error {
-	return h.scroll(param)
-}
-
-func (h *WindowsAnsiEventHandler) scrollDown(param int) error {
-	return h.scroll(-param)
-}
-
-func (h *WindowsAnsiEventHandler) scroll(param int) error {
-
 	info, err := GetConsoleScreenBufferInfo(h.fd)
 	if err != nil {
 		return err
 	}
 
-	logger.Infof("scroll: scrollTop: %d, scrollBottom: %d", h.sr.top, h.sr.bottom)
+	sr := h.effectiveSr(info.Window)
+	return h.scroll(param, sr, info)
+}
+
+func (h *WindowsAnsiEventHandler) scrollDown(param int) error {
+	return h.scrollUp(-param)
+}
+
+// scroll scrolls the provided scroll region by param lines. The scroll region is in buffer coordinates.
+func (h *WindowsAnsiEventHandler) scroll(param int, sr scrollRegion, info *CONSOLE_SCREEN_BUFFER_INFO) error {
+	logger.Infof("scroll: scrollTop: %d, scrollBottom: %d", sr.top, sr.bottom)
 	logger.Infof("scroll: windowTop: %d, windowBottom: %d", info.Window.Top, info.Window.Bottom)
 
-	rect := info.Window
-
-	// Current scroll region in Windows backing buffer coordinates
-	top := rect.Top + SHORT(h.sr.top)
-	bottom := rect.Top + SHORT(h.sr.bottom)
-
-	// Area from backing buffer to be copied
+	// Copy from and clip to the scroll region (full buffer width)
 	scrollRect := SMALL_RECT{
-		Top:    top + SHORT(param),
-		Bottom: bottom + SHORT(param),
-		Left:   rect.Left,
-		Right:  rect.Right,
-	}
-
-	// Clipping region should be the original scroll region
-	clipRegion := SMALL_RECT{
-		Top:    top,
-		Bottom: bottom,
-		Left:   rect.Left,
-		Right:  rect.Right,
+		Top:    sr.top,
+		Bottom: sr.bottom,
+		Left:   0,
+		Right:  info.Size.X - 1,
 	}
 
 	// Origin to which area should be copied
 	destOrigin := COORD{
-		X: rect.Left,
-		Y: top,
+		X: 0,
+		Y: sr.top - SHORT(param),
 	}
 
 	char := CHAR_INFO{
@@ -82,9 +68,8 @@ func (h *WindowsAnsiEventHandler) scroll(param int) error {
 		Attributes:  h.attributes,
 	}
 
-	if err := ScrollConsoleScreenBuffer(h.fd, scrollRect, clipRegion, destOrigin, char); err != nil {
+	if err := ScrollConsoleScreenBuffer(h.fd, scrollRect, scrollRect, destOrigin, char); err != nil {
 		return err
 	}
-
 	return nil
 }
