@@ -78,7 +78,7 @@ func (h *WindowsAnsiEventHandler) Execute(b byte) error {
 			if err := h.scrollUp(1); err != nil {
 				return err
 			}
-            return h.moveCursorColumn(1)
+			return h.moveCursorColumn(1)
 		}
 	}
 
@@ -205,9 +205,7 @@ func (h *WindowsAnsiEventHandler) ED(param int) error {
 	// [J  -- Erases from the cursor to the end of the screen, including the cursor position.
 	// [1J -- Erases from the beginning of the screen to the cursor, including the cursor position.
 	// [2J -- Erases the complete display. The cursor does not move.
-	// [3J -- Erases the complete display and backing buffer, cursor moves to (0,0)
 	// Notes:
-	// -- ANSI.SYS always moved the cursor to (0,0) for both [2J and [3J
 	// -- Clearing the entire buffer, versus just the Window, works best for Windows Consoles
 
 	info, err := GetConsoleScreenBufferInfo(h.fd)
@@ -230,10 +228,6 @@ func (h *WindowsAnsiEventHandler) ED(param int) error {
 	case 2:
 		start = COORD{0, 0}
 		end = COORD{info.Size.X - 1, info.Size.Y - 1}
-
-	case 3:
-		start = COORD{0, 0}
-		end = COORD{info.Size.X - 1, info.Size.Y - 1}
 	}
 
 	err = h.clearRange(h.attributes, start, end)
@@ -241,9 +235,18 @@ func (h *WindowsAnsiEventHandler) ED(param int) error {
 		return err
 	}
 
-	if param == 2 || param == 3 {
-		err = h.setCursorPosition(COORD{0, 0}, info.Size)
-		if err != nil {
+	// If the whole buffer was cleared, move the window to the top while preserving
+	// the window-relative cursor position.
+	if param == 2 {
+		pos := info.CursorPosition
+		window := info.Window
+		pos.Y -= window.Top
+		window.Bottom -= window.Top
+		window.Top = 0
+		if err := SetConsoleCursorPosition(h.fd, pos); err != nil {
+			return err
+		}
+		if err := SetConsoleWindowInfo(h.fd, true, window); err != nil {
 			return err
 		}
 	}
@@ -405,7 +408,7 @@ func (h *WindowsAnsiEventHandler) DECSTBM(top int, bottom int) error {
 	h.sr.bottom = SHORT(bottom - 1)
 
 	// This command also moves the cursor to the origin.
-	return h.CUP(1,1)
+	return h.CUP(1, 1)
 }
 
 func (h *WindowsAnsiEventHandler) RI() error {
