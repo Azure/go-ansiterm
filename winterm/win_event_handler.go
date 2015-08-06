@@ -387,6 +387,45 @@ func (h *WindowsAnsiEventHandler) DECOM(enable bool) error {
 	return h.CUP(1, 1)
 }
 
+func (h *WindowsAnsiEventHandler) DECCOLM(use132 bool) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
+	logger.Infof("DECCOLM: [%v]", []string{strconv.FormatBool(use132)})
+	h.clearWrap()
+	if err := h.ED(2); err != nil {
+		return err
+	}
+	info, err := GetConsoleScreenBufferInfo(h.fd)
+	if err != nil {
+		return err
+	}
+	targetWidth := SHORT(80)
+	if use132 {
+		targetWidth = 132
+	}
+	if info.Size.X < targetWidth {
+		if err := SetConsoleScreenBufferSize(h.fd, COORD{targetWidth, info.Size.Y}); err != nil {
+			logger.Info("set buffer failed:", err)
+			return err
+		}
+	}
+	window := info.Window
+	window.Left = 0
+	window.Right = targetWidth - 1
+	if err := SetConsoleWindowInfo(h.fd, true, window); err != nil {
+		logger.Info("set window failed:", err)
+		return err
+	}
+	if info.Size.X > targetWidth {
+		if err := SetConsoleScreenBufferSize(h.fd, COORD{targetWidth, info.Size.Y}); err != nil {
+			logger.Info("set buffer failed:", err)
+			return err
+		}
+	}
+	return SetConsoleCursorPosition(h.fd, COORD{0, 0})
+}
+
 func (h *WindowsAnsiEventHandler) ED(param int) error {
 	if err := h.Flush(); err != nil {
 		return err

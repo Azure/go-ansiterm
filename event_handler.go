@@ -43,6 +43,9 @@ type AnsiEventHandler interface {
 	// Origin Mode
 	DECOM(bool) error
 
+	// 132 Column Mode
+	DECCOLM(bool) error
+
 	// Erase in Display
 	ED(int) error
 
