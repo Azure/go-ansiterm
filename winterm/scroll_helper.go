@@ -77,3 +77,42 @@ func (h *WindowsAnsiEventHandler) scroll(param int, sr scrollRegion, info *CONSO
 	}
 	return nil
 }
+
+func (h *WindowsAnsiEventHandler) deleteCharacters(param int) error {
+	info, err := GetConsoleScreenBufferInfo(h.fd)
+	if err != nil {
+		return err
+	}
+	return h.scrollLine(param, info.CursorPosition, info)
+}
+
+func (h *WindowsAnsiEventHandler) insertCharacters(param int) error {
+	return h.deleteCharacters(-param)
+}
+
+// scrollLine scrolls a line horizontally starting at the provided position by a number of columns.
+func (h *WindowsAnsiEventHandler) scrollLine(columns int, position COORD, info *CONSOLE_SCREEN_BUFFER_INFO) error {
+	// Copy from and clip to the scroll region (full buffer width)
+	scrollRect := SMALL_RECT{
+		Top:    position.Y,
+		Bottom: position.Y,
+		Left:   position.X,
+		Right:  info.Size.X - 1,
+	}
+
+	// Origin to which area should be copied
+	destOrigin := COORD{
+		X: position.X - SHORT(columns),
+		Y: position.Y,
+	}
+
+	char := CHAR_INFO{
+		UnicodeChar: ' ',
+		Attributes:  h.attributes,
+	}
+
+	if err := ScrollConsoleScreenBuffer(h.fd, scrollRect, scrollRect, destOrigin, char); err != nil {
+		return err
+	}
+	return nil
+}

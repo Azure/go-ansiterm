@@ -39,6 +39,8 @@ func (ap *AnsiParser) csiDispatch() error {
 	logger.Infof("csiDispatch: %v(%v)", cmd, params)
 
 	switch cmd {
+	case "@":
+		return ap.eventHandler.ICH(getInt(params, 1))
 	case "A":
 		return ap.eventHandler.CUU(getInt(params, 1))
 	case "B":
@@ -67,6 +69,8 @@ func (ap *AnsiParser) csiDispatch() error {
 		return ap.eventHandler.IL(getInt(params, 1))
 	case "M":
 		return ap.eventHandler.DL(getInt(params, 1))
+	case "P":
+		return ap.eventHandler.DCH(getInt(params, 1))
 	case "S":
 		return ap.eventHandler.SU(getInt(params, 1))
 	case "T":
