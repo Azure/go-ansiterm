@@ -484,11 +484,7 @@ func (h *WindowsAnsiEventHandler) IL(param int) error {
 	}
 	logger.Infof("IL: [%v]", strconv.Itoa(param))
 	h.clearWrap()
-	if err := h.scrollDown(param); err != nil {
-		return err
-	}
-
-	return h.EL(2)
+	return h.insertLines(param)
 }
 
 func (h *WindowsAnsiEventHandler) DL(param int) error {
@@ -497,7 +493,7 @@ func (h *WindowsAnsiEventHandler) DL(param int) error {
 	}
 	logger.Infof("DL: [%v]", strconv.Itoa(param))
 	h.clearWrap()
-	return h.scrollUp(param)
+	return h.deleteLines(param)
 }
 
 func (h *WindowsAnsiEventHandler) SGR(params []int) error {
@@ -545,7 +541,7 @@ func (h *WindowsAnsiEventHandler) SU(param int) error {
 	}
 	logger.Infof("SU: [%v]", []string{strconv.Itoa(param)})
 	h.clearWrap()
-	return h.scrollPageUp()
+	return h.scrollUp(param)
 }
 
 func (h *WindowsAnsiEventHandler) SD(param int) error {
@@ -554,7 +550,7 @@ func (h *WindowsAnsiEventHandler) SD(param int) error {
 	}
 	logger.Infof("SD: [%v]", []string{strconv.Itoa(param)})
 	h.clearWrap()
-	return h.scrollPageDown()
+	return h.scrollDown(param)
 }
 
 func (h *WindowsAnsiEventHandler) DA(params []string) error {
