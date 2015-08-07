@@ -107,6 +107,16 @@ func (h *TestAnsiEventHandler) DL(param int) error {
 	return nil
 }
 
+func (h *TestAnsiEventHandler) ICH(param int) error {
+	h.recordCall("ICH", []string{strconv.Itoa(param)})
+	return nil
+}
+
+func (h *TestAnsiEventHandler) DCH(param int) error {
+	h.recordCall("DCH", []string{strconv.Itoa(param)})
+	return nil
+}
+
 func (h *TestAnsiEventHandler) SGR(params []int) error {
 	strings := []string{}
 	for _, v := range params {

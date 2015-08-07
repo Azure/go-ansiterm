@@ -52,6 +52,12 @@ type AnsiEventHandler interface {
 	// Delete Line
 	DL(int) error
 
+	// Insert Character
+	ICH(int) error
+
+	// Delete Character
+	DCH(int) error
+
 	// Set Graphics Rendition
 	SGR([]int) error
 

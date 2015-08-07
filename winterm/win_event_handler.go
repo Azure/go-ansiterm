@@ -496,6 +496,24 @@ func (h *WindowsAnsiEventHandler) DL(param int) error {
 	return h.deleteLines(param)
 }
 
+func (h *WindowsAnsiEventHandler) ICH(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
+	logger.Infof("ICH: [%v]", strconv.Itoa(param))
+	h.clearWrap()
+	return h.insertCharacters(param)
+}
+
+func (h *WindowsAnsiEventHandler) DCH(param int) error {
+	if err := h.Flush(); err != nil {
+		return err
+	}
+	logger.Infof("DCH: [%v]", strconv.Itoa(param))
+	h.clearWrap()
+	return h.deleteCharacters(param)
+}
+
 func (h *WindowsAnsiEventHandler) SGR(params []int) error {
 	if err := h.Flush(); err != nil {
 		return err
