@@ -40,6 +40,12 @@ type AnsiEventHandler interface {
 	// Text Cursor Enable Mode
 	DECTCEM(bool) error
 
+	// Origin Mode
+	DECOM(bool) error
+
+	// 132 Column Mode
+	DECCOLM(bool) error
+
 	// Erase in Display
 	ED(int) error
 
@@ -72,6 +78,9 @@ type AnsiEventHandler interface {
 
 	// Set Top and Bottom Margins
 	DECSTBM(int, int) error
+
+	// Index
+	IND() error
 
 	// Reverse Index
 	RI() error
