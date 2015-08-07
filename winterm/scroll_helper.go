@@ -13,23 +13,6 @@ func (h *WindowsAnsiEventHandler) effectiveSr(window SMALL_RECT) scrollRegion {
 	return scrollRegion{top: top, bottom: bottom}
 }
 
-func (h *WindowsAnsiEventHandler) scrollPageUp() error {
-	return h.scrollPage(1)
-}
-
-func (h *WindowsAnsiEventHandler) scrollPageDown() error {
-	return h.scrollPage(-1)
-}
-
-func (h *WindowsAnsiEventHandler) scrollPage(param int) error {
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
-		return err
-	}
-
-	return h.scroll(param, scrollRegion{info.Window.Top, info.Window.Bottom}, info)
-}
-
 func (h *WindowsAnsiEventHandler) scrollUp(param int) error {
 	info, err := GetConsoleScreenBufferInfo(h.fd)
 	if err != nil {
@@ -42,6 +25,27 @@ func (h *WindowsAnsiEventHandler) scrollUp(param int) error {
 
 func (h *WindowsAnsiEventHandler) scrollDown(param int) error {
 	return h.scrollUp(-param)
+}
+
+func (h *WindowsAnsiEventHandler) deleteLines(param int) error {
+	info, err := GetConsoleScreenBufferInfo(h.fd)
+	if err != nil {
+		return err
+	}
+
+	start := info.CursorPosition.Y
+	sr := h.effectiveSr(info.Window)
+	// Lines cannot be inserted or deleted outside the scrolling region.
+	if start >= sr.top && start <= sr.bottom {
+		sr.top = start
+		return h.scroll(param, sr, info)
+	} else {
+		return nil
+	}
+}
+
+func (h *WindowsAnsiEventHandler) insertLines(param int) error {
+	return h.deleteLines(-param)
 }
 
 // scroll scrolls the provided scroll region by param lines. The scroll region is in buffer coordinates.
