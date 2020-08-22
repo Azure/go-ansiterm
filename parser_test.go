@@ -130,9 +130,9 @@ func TestClearOnStateChange(t *testing.T) {
 }
 
 func TestC0(t *testing.T) {
-	expectedCall := "Execute([" + string(ANSI_LINE_FEED) + "])"
+	expectedCall := "Execute([" + string(rune(ANSI_LINE_FEED)) + "])"
 	c0Helper(t, []byte{ANSI_LINE_FEED}, "Ground", []string{expectedCall})
-	expectedCall = "Execute([" + string(ANSI_CARRIAGE_RETURN) + "])"
+	expectedCall = "Execute([" + string(rune(ANSI_CARRIAGE_RETURN)) + "])"
 	c0Helper(t, []byte{ANSI_CARRIAGE_RETURN}, "Ground", []string{expectedCall})
 }
 
