@@ -460,8 +460,7 @@ func (h *windowsAnsiEventHandler) ED(param int) error {
 		return err
 	}
 
-	var start COORD
-	var end COORD
+	var start, end COORD
 
 	switch param {
 	case 0:
@@ -477,8 +476,7 @@ func (h *windowsAnsiEventHandler) ED(param int) error {
 		end = COORD{X: info.Size.X - 1, Y: info.Size.Y - 1}
 	}
 
-	err = h.clearRange(h.attributes, start, end)
-	if err != nil {
+	if err := h.clearRange(h.attributes, start, end); err != nil {
 		return err
 	}
 
@@ -515,8 +513,7 @@ func (h *windowsAnsiEventHandler) EL(param int) error {
 		return err
 	}
 
-	var start COORD
-	var end COORD
+	var start, end COORD
 
 	switch param {
 	case 0:
@@ -687,10 +684,12 @@ func (h *windowsAnsiEventHandler) Flush() error {
 			return err
 		}
 
-		charInfo := []CHAR_INFO{{UnicodeChar: uint16(h.marginByte), Attributes: info.Attributes}}
-		size := COORD{X: 1, Y: 1}
-		position := COORD{X: 0, Y: 0}
-		region := SMALL_RECT{Left: info.CursorPosition.X, Top: info.CursorPosition.Y, Right: info.CursorPosition.X, Bottom: info.CursorPosition.Y}
+		var (
+			charInfo = []CHAR_INFO{{UnicodeChar: uint16(h.marginByte), Attributes: info.Attributes}}
+			size     = COORD{X: 1, Y: 1}
+			position = COORD{X: 0, Y: 0}
+			region   = SMALL_RECT{Left: info.CursorPosition.X, Top: info.CursorPosition.Y, Right: info.CursorPosition.X, Bottom: info.CursorPosition.Y}
+		)
 		if err := WriteConsoleOutput(h.fd, charInfo, size, position, &region); err != nil {
 			return err
 		}

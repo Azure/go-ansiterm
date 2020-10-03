@@ -18,13 +18,12 @@ func (h *windowsAnsiEventHandler) getCursorWindow(info *CONSOLE_SCREEN_BUFFER_IN
 			Left:   0,
 			Right:  info.Size.X - 1,
 		}
-	} else {
-		return SMALL_RECT{
-			Top:    info.Window.Top,
-			Bottom: info.Window.Bottom,
-			Left:   0,
-			Right:  info.Size.X - 1,
-		}
+	}
+	return SMALL_RECT{
+		Top:    info.Window.Top,
+		Bottom: info.Window.Bottom,
+		Left:   0,
+		Right:  info.Size.X - 1,
 	}
 }
 
@@ -32,12 +31,11 @@ func (h *windowsAnsiEventHandler) getCursorWindow(info *CONSOLE_SCREEN_BUFFER_IN
 func (h *windowsAnsiEventHandler) setCursorPosition(position COORD, window SMALL_RECT) error {
 	position.X = ensureInRange(position.X, window.Left, window.Right)
 	position.Y = ensureInRange(position.Y, window.Top, window.Bottom)
-	err := SetConsoleCursorPosition(h.fd, position)
-	if err != nil {
+	if err := SetConsoleCursorPosition(h.fd, position); err != nil {
 		return err
 	}
 	h.logf("Cursor position set: (%d, %d)", position.X, position.Y)
-	return err
+	return nil
 }
 
 func (h *windowsAnsiEventHandler) moveCursorVertical(param int) error {
