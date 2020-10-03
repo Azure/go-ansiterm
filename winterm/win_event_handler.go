@@ -97,7 +97,8 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 		return false, err
 	}
 	sr := h.effectiveSr(info.Window)
-	if pos.Y == sr.bottom {
+	switch {
+	case pos.Y == sr.bottom:
 		// Scrolling is necessary. Let Windows automatically scroll if the scrolling region
 		// is the full window.
 		if sr.top == info.Window.Top && sr.bottom == info.Window.Bottom {
@@ -125,7 +126,7 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 		}
 		return true, nil
 
-	} else if pos.Y < info.Window.Bottom {
+	case pos.Y < info.Window.Bottom:
 		// Let Windows handle the LF.
 		pos.Y++
 		if includeCR {
@@ -133,7 +134,8 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 		}
 		h.updatePos(pos)
 		return false, nil
-	} else {
+
+	default:
 		// The cursor is at the bottom of the screen but outside the scroll
 		// region. Skip the LF.
 		h.logf("Simulating LF outside scroll region")
