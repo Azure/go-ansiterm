@@ -155,26 +155,25 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 // executeLF executes a LF without a CR.
 func (h *windowsAnsiEventHandler) executeLF() error {
 	handled, err := h.simulateLF(false)
+	if err != nil || handled {
+		return err
+	}
+
+	// Windows LF will reset the cursor column position. Write the LF
+	// and restore the cursor position.
+	pos, _, err := h.getCurrentInfo()
 	if err != nil {
 		return err
 	}
-	if !handled {
-		// Windows LF will reset the cursor column position. Write the LF
-		// and restore the cursor position.
-		pos, _, err := h.getCurrentInfo()
-		if err != nil {
-			return err
-		}
-		h.buffer.WriteByte(ansiterm.ANSI_LINE_FEED)
-		if pos.X != 0 {
-			if err := h.Flush(); err != nil {
-				return err
-			}
-			h.logf("Resetting cursor position for LF without CR")
-			return SetConsoleCursorPosition(h.fd, pos)
-		}
+	h.buffer.WriteByte(ansiterm.ANSI_LINE_FEED)
+	if pos.X == 0 {
+		return nil
 	}
-	return nil
+	if err := h.Flush(); err != nil {
+		return err
+	}
+	h.logf("Resetting cursor position for LF without CR")
+	return SetConsoleCursorPosition(h.fd, pos)
 }
 
 func (h *windowsAnsiEventHandler) Print(b byte) error {
