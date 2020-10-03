@@ -26,7 +26,7 @@ func (csiState csiEntryState) Handle(b byte) (s state, e error) {
 
 func (csiState csiEntryState) Transition(s state) error {
 	csiState.parser.logf("CsiEntry::Transition %s --> %s", csiState.Name(), s.Name())
-	csiState.baseState.Transition(s)
+	_ = csiState.baseState.Transition(s)
 
 	switch s {
 	case csiState.parser.ground:
@@ -44,6 +44,6 @@ func (csiState csiEntryState) Transition(s state) error {
 }
 
 func (csiState csiEntryState) Enter() error {
-	csiState.parser.clear()
+	_ = csiState.parser.clear()
 	return nil
 }
