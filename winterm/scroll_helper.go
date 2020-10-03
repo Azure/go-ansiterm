@@ -18,9 +18,7 @@ func (h *windowsAnsiEventHandler) scrollUp(param int) error {
 	if err != nil {
 		return err
 	}
-
-	sr := h.effectiveSr(info.Window)
-	return h.scroll(param, sr, info)
+	return h.scroll(param, h.effectiveSr(info.Window), info)
 }
 
 func (h *windowsAnsiEventHandler) scrollDown(param int) error {
