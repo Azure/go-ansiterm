@@ -4,8 +4,8 @@ package winterm
 
 // effectiveSr gets the current effective scroll region in buffer coordinates
 func (h *windowsAnsiEventHandler) effectiveSr(window SMALL_RECT) scrollRegion {
-	top := addInRange(window.Top, h.sr.top, window.Top, window.Bottom)
-	bottom := addInRange(window.Top, h.sr.bottom, window.Top, window.Bottom)
+	top := ensureInRange(window.Top+h.sr.top, window.Top, window.Bottom)
+	bottom := ensureInRange(window.Top+h.sr.bottom, window.Top, window.Bottom)
 	if top >= bottom {
 		top = window.Top
 		bottom = window.Bottom
