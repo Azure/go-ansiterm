@@ -8,9 +8,9 @@ import (
 func getStateNames() []string {
 	parser, _ := createTestParser("Ground")
 
-	stateNames := []string{}
-	for _, state := range parser.stateMap {
-		stateNames = append(stateNames, state.Name())
+	var stateNames []string
+	for _, s := range parser.stateMap {
+		stateNames = append(stateNames, s.Name())
 	}
 
 	return stateNames
@@ -20,10 +20,10 @@ func stateTransitionHelper(t *testing.T, start string, end string, bytes []byte)
 	t.Helper()
 	for _, b := range bytes {
 		t.Run(fmt.Sprintf("Start=%s/%q", start, b), func(t *testing.T) {
-			t.Helper()
-			bytes := []byte{byte(b)}
 			parser, _ := createTestParser(start)
-			parser.Parse(bytes)
+			if _, err := parser.Parse([]byte{b}); err != nil {
+				t.Fatal(err)
+			}
 			validateState(t, parser.currState, end)
 		})
 	}
@@ -41,7 +41,9 @@ func funcCallParamHelper(t *testing.T, bytes []byte, start string, expected stri
 	t.Run(fmt.Sprintf("Start=%s/%q", start, bytes), func(t *testing.T) {
 		t.Helper()
 		parser, evtHandler := createTestParser(start)
-		parser.Parse(bytes)
+		if _, err := parser.Parse(bytes); err != nil {
+			t.Errorf("Error parsing %q: %v", string(bytes), err)
+		}
 		validateState(t, parser.currState, expected)
 		validateFuncCalls(t, evtHandler.FunctionCalls, expectedCalls)
 	})
@@ -116,7 +118,9 @@ func clearOnStateChangeHelper(t *testing.T, start string, end string, bytes []by
 	t.Helper()
 	p, _ := createTestParser(start)
 	fillContext(p.context)
-	p.Parse(bytes)
+	if _, err := p.Parse(bytes); err != nil {
+		t.Errorf("Error parsing %q: %v", string(bytes), err)
+	}
 	validateState(t, p.currState, end)
 	validateEmptyContext(t, p.context)
 }
@@ -124,7 +128,9 @@ func clearOnStateChangeHelper(t *testing.T, start string, end string, bytes []by
 func c0Helper(t *testing.T, bytes []byte, expectedState string, expectedCalls []string) {
 	t.Helper()
 	parser, evtHandler := createTestParser("Ground")
-	parser.Parse(bytes)
+	if _, err := parser.Parse(bytes); err != nil {
+		t.Errorf("Error parsing %q: %v", string(bytes), err)
+	}
 	validateState(t, parser.currState, expectedState)
 	validateFuncCalls(t, evtHandler.FunctionCalls, expectedCalls)
 }

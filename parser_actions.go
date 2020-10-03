@@ -109,9 +109,8 @@ func (ap *AnsiParser) print() error {
 	return ap.eventHandler.Print(ap.context.currentChar)
 }
 
-func (ap *AnsiParser) clear() error {
+func (ap *AnsiParser) clear() {
 	ap.context = &ansiContext{}
-	return nil
 }
 
 func (ap *AnsiParser) execute() error {
