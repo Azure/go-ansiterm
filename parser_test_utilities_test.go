@@ -12,6 +12,7 @@ func createTestParser(s string) (*AnsiParser, *TestAnsiEventHandler) {
 }
 
 func validateState(t *testing.T, actualState state, expectedStateName string) {
+	t.Helper()
 	actualName := "Nil"
 
 	if actualState != nil {
@@ -24,6 +25,7 @@ func validateState(t *testing.T, actualState state, expectedStateName string) {
 }
 
 func validateFuncCalls(t *testing.T, actualCalls []string, expectedCalls []string) {
+	t.Helper()
 	actualCount := len(actualCalls)
 	expectedCount := len(expectedCalls)
 
@@ -50,6 +52,7 @@ func fillContext(context *ansiContext) {
 }
 
 func validateEmptyContext(t *testing.T, context *ansiContext) {
+	t.Helper()
 	var expectedCurrChar byte = 0x0
 	if context.currentChar != expectedCurrChar {
 		t.Errorf("Currentchar mismatch '%#x' != '%#x'", context.currentChar, expectedCurrChar)
