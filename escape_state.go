@@ -29,7 +29,7 @@ func (escState escapeState) Handle(b byte) (s state, e error) {
 
 func (escState escapeState) Transition(s state) error {
 	escState.parser.logf("Escape::Transition %s --> %s", escState.Name(), s.Name())
-	escState.baseState.Transition(s)
+	_ = escState.baseState.Transition(s)
 
 	switch s {
 	case escState.parser.ground:
@@ -42,6 +42,6 @@ func (escState escapeState) Transition(s state) error {
 }
 
 func (escState escapeState) Enter() error {
-	escState.parser.clear()
+	_ = escState.parser.clear()
 	return nil
 }
