@@ -15,8 +15,9 @@ func TestStateTransitions(t *testing.T) {
 	stateTransitionHelper(t, "EscapeIntermediate", "EscapeIntermediate", intermeds)
 	stateTransitionHelper(t, "EscapeIntermediate", "EscapeIntermediate", executors)
 	stateTransitionHelper(t, "EscapeIntermediate", "Ground", escapeIntermediateToGroundBytes)
-	stateTransitionHelper(t, "OscString", "Ground", []byte{ANSI_BEL})
-	stateTransitionHelper(t, "OscString", "Ground", []byte{0x5C})
+	stateTransitionHelper(t, "OscString", "Ground", []byte{ANSI_BEL, 0x9C})
+	stateTransitionHelper(t, "OscString", "OscString", printables)
+	stateTransitionHelper(t, "OscString", "Escape", []byte{ANSI_ESCAPE_PRIMARY})
 	stateTransitionHelper(t, "Ground", "Ground", executors)
 }
 

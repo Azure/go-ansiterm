@@ -17,28 +17,38 @@ func getStateNames() []string {
 }
 
 func stateTransitionHelper(t *testing.T, start string, end string, bytes []byte) {
+	t.Helper()
 	for _, b := range bytes {
-		bytes := []byte{byte(b)}
-		parser, _ := createTestParser(start)
-		parser.Parse(bytes)
-		validateState(t, parser.currState, end)
+		t.Run(fmt.Sprintf("Start=%s/%q", start, b), func(t *testing.T) {
+			t.Helper()
+			bytes := []byte{byte(b)}
+			parser, _ := createTestParser(start)
+			parser.Parse(bytes)
+			validateState(t, parser.currState, end)
+		})
 	}
 }
 
 func anyToXHelper(t *testing.T, bytes []byte, expectedState string) {
+	t.Helper()
 	for _, s := range getStateNames() {
 		stateTransitionHelper(t, s, expectedState, bytes)
 	}
 }
 
 func funcCallParamHelper(t *testing.T, bytes []byte, start string, expected string, expectedCalls []string) {
-	parser, evtHandler := createTestParser(start)
-	parser.Parse(bytes)
-	validateState(t, parser.currState, expected)
-	validateFuncCalls(t, evtHandler.FunctionCalls, expectedCalls)
+	t.Helper()
+	t.Run(fmt.Sprintf("Start=%s/%q", start, bytes), func(t *testing.T) {
+		t.Helper()
+		parser, evtHandler := createTestParser(start)
+		parser.Parse(bytes)
+		validateState(t, parser.currState, expected)
+		validateFuncCalls(t, evtHandler.FunctionCalls, expectedCalls)
+	})
 }
 
 func parseParamsHelper(t *testing.T, bytes []byte, expectedParams []string) {
+	t.Helper()
 	params, err := parseParams(bytes)
 
 	if err != nil {
@@ -63,6 +73,7 @@ func parseParamsHelper(t *testing.T, bytes []byte, expectedParams []string) {
 }
 
 func cursorSingleParamHelper(t *testing.T, command byte, funcName string) {
+	t.Helper()
 	funcCallParamHelper(t, []byte{command}, "CsiEntry", "Ground", []string{fmt.Sprintf("%s([1])", funcName)})
 	funcCallParamHelper(t, []byte{'0', command}, "CsiEntry", "Ground", []string{fmt.Sprintf("%s([1])", funcName)})
 	funcCallParamHelper(t, []byte{'2', command}, "CsiEntry", "Ground", []string{fmt.Sprintf("%s([2])", funcName)})
@@ -72,6 +83,7 @@ func cursorSingleParamHelper(t *testing.T, command byte, funcName string) {
 }
 
 func cursorTwoParamHelper(t *testing.T, command byte, funcName string) {
+	t.Helper()
 	funcCallParamHelper(t, []byte{command}, "CsiEntry", "Ground", []string{fmt.Sprintf("%s([1 1])", funcName)})
 	funcCallParamHelper(t, []byte{'0', command}, "CsiEntry", "Ground", []string{fmt.Sprintf("%s([1 1])", funcName)})
 	funcCallParamHelper(t, []byte{'2', command}, "CsiEntry", "Ground", []string{fmt.Sprintf("%s([2 1])", funcName)})
@@ -81,6 +93,7 @@ func cursorTwoParamHelper(t *testing.T, command byte, funcName string) {
 }
 
 func eraseHelper(t *testing.T, command byte, funcName string) {
+	t.Helper()
 	funcCallParamHelper(t, []byte{command}, "CsiEntry", "Ground", []string{fmt.Sprintf("%s([0])", funcName)})
 	funcCallParamHelper(t, []byte{'0', command}, "CsiEntry", "Ground", []string{fmt.Sprintf("%s([0])", funcName)})
 	funcCallParamHelper(t, []byte{'1', command}, "CsiEntry", "Ground", []string{fmt.Sprintf("%s([1])", funcName)})
@@ -91,6 +104,7 @@ func eraseHelper(t *testing.T, command byte, funcName string) {
 }
 
 func scrollHelper(t *testing.T, command byte, funcName string) {
+	t.Helper()
 	funcCallParamHelper(t, []byte{command}, "CsiEntry", "Ground", []string{fmt.Sprintf("%s([1])", funcName)})
 	funcCallParamHelper(t, []byte{'0', command}, "CsiEntry", "Ground", []string{fmt.Sprintf("%s([1])", funcName)})
 	funcCallParamHelper(t, []byte{'1', command}, "CsiEntry", "Ground", []string{fmt.Sprintf("%s([1])", funcName)})
@@ -99,6 +113,7 @@ func scrollHelper(t *testing.T, command byte, funcName string) {
 }
 
 func clearOnStateChangeHelper(t *testing.T, start string, end string, bytes []byte) {
+	t.Helper()
 	p, _ := createTestParser(start)
 	fillContext(p.context)
 	p.Parse(bytes)
@@ -107,6 +122,7 @@ func clearOnStateChangeHelper(t *testing.T, start string, end string, bytes []by
 }
 
 func c0Helper(t *testing.T, bytes []byte, expectedState string, expectedCalls []string) {
+	t.Helper()
 	parser, evtHandler := createTestParser("Ground")
 	parser.Parse(bytes)
 	validateState(t, parser.currState, expectedState)
