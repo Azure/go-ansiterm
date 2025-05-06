@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package winterm
@@ -172,14 +173,14 @@ func boolToBOOL(f bool) int32 {
 	}
 }
 
-// GetConsoleCursorInfo retrieves information about the size and visiblity of the console cursor.
+// GetConsoleCursorInfo retrieves information about the size and visibility of the console cursor.
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms683163(v=vs.85).aspx.
 func GetConsoleCursorInfo(handle uintptr, cursorInfo *CONSOLE_CURSOR_INFO) error {
 	r1, r2, err := getConsoleCursorInfoProc.Call(handle, uintptr(unsafe.Pointer(cursorInfo)), 0)
 	return checkError(r1, r2, err)
 }
 
-// SetConsoleCursorInfo sets the size and visiblity of the console cursor.
+// SetConsoleCursorInfo sets the size and visibility of the console cursor.
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms686019(v=vs.85).aspx.
 func SetConsoleCursorInfo(handle uintptr, cursorInfo *CONSOLE_CURSOR_INFO) error {
 	r1, r2, err := setConsoleCursorInfoProc.Call(handle, uintptr(unsafe.Pointer(cursorInfo)), 0)
