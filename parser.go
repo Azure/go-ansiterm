@@ -136,7 +136,7 @@ func (ap *AnsiParser) changeState(newState state) error {
 
 	// Perform transition action
 	if err := ap.currState.Transition(newState); err != nil {
-		ap.logf("Transition from '%s' to '%s' failed with: '%v'", ap.currState.Name(), newState.Name, err)
+		ap.logf("Transition from '%s' to '%s' failed with: '%v'", ap.currState.Name(), newState.Name(), err)
 		return err
 	}
 
