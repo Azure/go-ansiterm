@@ -113,7 +113,7 @@ func (ap *AnsiParser) handle(b byte) error {
 
 	if newState == nil {
 		ap.logf("WARNING: newState is nil")
-		return errors.New("New state of 'nil' is invalid.")
+		return errors.New("new state of 'nil' is invalid")
 	}
 
 	if newState != ap.currState {

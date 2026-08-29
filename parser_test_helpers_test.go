@@ -51,12 +51,7 @@ func funcCallParamHelper(t *testing.T, bytes []byte, start string, expected stri
 
 func parseParamsHelper(t *testing.T, bytes []byte, expectedParams []string) {
 	t.Helper()
-	params, err := parseParams(bytes)
-
-	if err != nil {
-		t.Errorf("Parameter parse error: %v", err)
-		return
-	}
+	params := parseParams(bytes)
 
 	if len(params) != len(expectedParams) {
 		t.Errorf("Parsed   parameters: %v", params)
