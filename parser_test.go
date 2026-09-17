@@ -31,7 +31,9 @@ func TestAnyToX(t *testing.T) {
 
 func TestCollectCsiParams(t *testing.T) {
 	parser, _ := createTestParser("CsiEntry")
-	parser.Parse(csiCollectables)
+	if _, err := parser.Parse(csiCollectables); err != nil {
+		t.Fatalf("Error parsing csiCollectables: %v", err)
+	}
 
 	buffer := parser.context.paramBuffer
 	bufferCount := len(buffer)
@@ -106,7 +108,9 @@ func TestScroll(t *testing.T) {
 
 func TestPrint(t *testing.T) {
 	parser, evtHandler := createTestParser("Ground")
-	parser.Parse(printables)
+	if _, err := parser.Parse(printables); err != nil {
+		t.Fatalf("Error parsing printables: %v", err)
+	}
 	validateState(t, parser.currState, "Ground")
 
 	for i, v := range printables {
