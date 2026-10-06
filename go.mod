@@ -1,5 +1,5 @@
 module github.com/Azure/go-ansiterm
 
-go 1.16
+go 1.17
 
-require golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
+require golang.org/x/sys v0.1.0
