@@ -36,7 +36,6 @@ var (
 
 	getConsoleCursorInfoProc       = kernel32DLL.NewProc("GetConsoleCursorInfo")
 	setConsoleCursorInfoProc       = kernel32DLL.NewProc("SetConsoleCursorInfo")
-	getConsoleScreenBufferInfoProc = kernel32DLL.NewProc("GetConsoleScreenBufferInfo")
 	setConsoleScreenBufferSizeProc = kernel32DLL.NewProc("SetConsoleScreenBufferSize")
 	scrollConsoleScreenBufferProc  = kernel32DLL.NewProc("ScrollConsoleScreenBufferA")
 	setConsoleTextAttributeProc    = kernel32DLL.NewProc("SetConsoleTextAttribute")
@@ -131,6 +130,8 @@ type (
 		Visible int32
 	}
 
+	// CONSOLE_SCREEN_BUFFER_INFO is identical to [windows.ConsoleScreenBufferInfo]
+	// but implements [fmt.Stringer].
 	CONSOLE_SCREEN_BUFFER_INFO struct {
 		Size              COORD
 		CursorPosition    COORD
@@ -211,12 +212,18 @@ func SetConsoleMode(handle uintptr, mode uint32) error {
 // GetConsoleScreenBufferInfo retrieves information about the specified console screen buffer.
 // See http://msdn.microsoft.com/en-us/library/windows/desktop/ms683171(v=vs.85).aspx.
 func GetConsoleScreenBufferInfo(handle uintptr) (*CONSOLE_SCREEN_BUFFER_INFO, error) {
-	info := CONSOLE_SCREEN_BUFFER_INFO{}
-	err := checkError(getConsoleScreenBufferInfoProc.Call(handle, uintptr(unsafe.Pointer(&info)), 0))
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(handle), &info); err != nil {
 		return nil, err
 	}
-	return &info, nil
+
+	return &CONSOLE_SCREEN_BUFFER_INFO{
+		Size:              COORD(info.Size),
+		CursorPosition:    COORD(info.CursorPosition),
+		Attributes:        info.Attributes,
+		Window:            SMALL_RECT(info.Window),
+		MaximumWindowSize: COORD(info.MaximumWindowSize),
+	}, nil
 }
 
 func ScrollConsoleScreenBuffer(handle uintptr, scrollRect SMALL_RECT, clipRect SMALL_RECT, destOrigin COORD, char CHAR_INFO) error {
