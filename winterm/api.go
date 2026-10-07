@@ -4,6 +4,7 @@ package winterm
 
 import (
 	"fmt"
+	"runtime"
 	"syscall"
 	"unsafe"
 )
@@ -190,7 +191,7 @@ func SetConsoleCursorInfo(handle uintptr, cursorInfo *CONSOLE_CURSOR_INFO) error
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms686025(v=vs.85).aspx.
 func SetConsoleCursorPosition(handle uintptr, coord COORD) error {
 	r1, r2, err := setConsoleCursorPositionProc.Call(handle, coordToPointer(coord))
-	use(coord)
+	runtime.KeepAlive(coord)
 	return checkError(r1, r2, err)
 }
 
@@ -205,7 +206,7 @@ func GetConsoleMode(handle uintptr) (mode uint32, err error) {
 // See http://msdn.microsoft.com/en-us/library/windows/desktop/ms686033(v=vs.85).aspx.
 func SetConsoleMode(handle uintptr, mode uint32) error {
 	r1, r2, err := setConsoleModeProc.Call(handle, uintptr(mode), 0)
-	use(mode)
+	runtime.KeepAlive(mode)
 	return checkError(r1, r2, err)
 }
 
@@ -222,10 +223,10 @@ func GetConsoleScreenBufferInfo(handle uintptr) (*CONSOLE_SCREEN_BUFFER_INFO, er
 
 func ScrollConsoleScreenBuffer(handle uintptr, scrollRect SMALL_RECT, clipRect SMALL_RECT, destOrigin COORD, char CHAR_INFO) error {
 	r1, r2, err := scrollConsoleScreenBufferProc.Call(handle, uintptr(unsafe.Pointer(&scrollRect)), uintptr(unsafe.Pointer(&clipRect)), coordToPointer(destOrigin), uintptr(unsafe.Pointer(&char)))
-	use(scrollRect)
-	use(clipRect)
-	use(destOrigin)
-	use(char)
+	runtime.KeepAlive(scrollRect)
+	runtime.KeepAlive(clipRect)
+	runtime.KeepAlive(destOrigin)
+	runtime.KeepAlive(char)
 	return checkError(r1, r2, err)
 }
 
@@ -233,7 +234,7 @@ func ScrollConsoleScreenBuffer(handle uintptr, scrollRect SMALL_RECT, clipRect S
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms686044(v=vs.85).aspx.
 func SetConsoleScreenBufferSize(handle uintptr, coord COORD) error {
 	r1, r2, err := setConsoleScreenBufferSizeProc.Call(handle, coordToPointer(coord))
-	use(coord)
+	runtime.KeepAlive(coord)
 	return checkError(r1, r2, err)
 }
 
@@ -242,7 +243,7 @@ func SetConsoleScreenBufferSize(handle uintptr, coord COORD) error {
 // See http://msdn.microsoft.com/en-us/library/windows/desktop/ms686047(v=vs.85).aspx.
 func SetConsoleTextAttribute(handle uintptr, attribute uint16) error {
 	r1, r2, err := setConsoleTextAttributeProc.Call(handle, uintptr(attribute), 0)
-	use(attribute)
+	runtime.KeepAlive(attribute)
 	return checkError(r1, r2, err)
 }
 
@@ -251,8 +252,8 @@ func SetConsoleTextAttribute(handle uintptr, attribute uint16) error {
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms686125(v=vs.85).aspx.
 func SetConsoleWindowInfo(handle uintptr, isAbsolute bool, rect SMALL_RECT) error {
 	r1, r2, err := setConsoleWindowInfoProc.Call(handle, uintptr(boolToBOOL(isAbsolute)), uintptr(unsafe.Pointer(&rect)))
-	use(isAbsolute)
-	use(rect)
+	runtime.KeepAlive(isAbsolute)
+	runtime.KeepAlive(rect)
 	return checkError(r1, r2, err)
 }
 
@@ -260,9 +261,9 @@ func SetConsoleWindowInfo(handle uintptr, isAbsolute bool, rect SMALL_RECT) erro
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms687404(v=vs.85).aspx.
 func WriteConsoleOutput(handle uintptr, buffer []CHAR_INFO, bufferSize COORD, bufferCoord COORD, writeRegion *SMALL_RECT) error {
 	r1, r2, err := writeConsoleOutputProc.Call(handle, uintptr(unsafe.Pointer(&buffer[0])), coordToPointer(bufferSize), coordToPointer(bufferCoord), uintptr(unsafe.Pointer(writeRegion)))
-	use(buffer)
-	use(bufferSize)
-	use(bufferCoord)
+	runtime.KeepAlive(buffer)
+	runtime.KeepAlive(bufferSize)
+	runtime.KeepAlive(bufferCoord)
 	return checkError(r1, r2, err)
 }
 
@@ -270,7 +271,7 @@ func WriteConsoleOutput(handle uintptr, buffer []CHAR_INFO, bufferSize COORD, bu
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms684961(v=vs.85).aspx.
 func ReadConsoleInput(handle uintptr, buffer []INPUT_RECORD, count *uint32) error {
 	r1, r2, err := readConsoleInputProc.Call(handle, uintptr(unsafe.Pointer(&buffer[0])), uintptr(len(buffer)), uintptr(unsafe.Pointer(count)))
-	use(buffer)
+	runtime.KeepAlive(buffer)
 	return checkError(r1, r2, err)
 }
 
@@ -285,7 +286,7 @@ func WaitForSingleObject(handle uintptr, msWait uint32) (bool, error) {
 	case WAIT_SIGNALED:
 		return true, nil
 	}
-	use(msWait)
+	runtime.KeepAlive(msWait)
 	return false, err
 }
 
@@ -321,7 +322,3 @@ func coordToPointer(c COORD) uintptr {
 	// Note: This code assumes the two SHORTs are correctly laid out; the "cast" to uint32 is just to get a pointer to pass.
 	return uintptr(*((*uint32)(unsafe.Pointer(&c))))
 }
-
-// use is a no-op, but the compiler cannot see that it is.
-// Calling use(p) ensures that p is kept live until that point.
-func use(p interface{}) {}
