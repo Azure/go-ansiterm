@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 // ===========================================================================================================
@@ -30,7 +32,7 @@ import (
 // ===========================================================================================================
 
 var (
-	kernel32DLL = syscall.NewLazyDLL("kernel32.dll")
+	kernel32DLL = windows.NewLazyDLL("kernel32.dll")
 
 	getConsoleCursorInfoProc       = kernel32DLL.NewProc("GetConsoleCursorInfo")
 	setConsoleCursorInfoProc       = kernel32DLL.NewProc("SetConsoleCursorInfo")
