@@ -47,32 +47,35 @@ var (
 	waitForSingleObjectProc        = kernel32DLL.NewProc("WaitForSingleObject")
 )
 
-// Windows Console constants
+// Console modes
+// See https://msdn.microsoft.com/en-us/library/windows/desktop/ms686033(v=vs.85).aspx.
 const (
-	// Console modes
-	// See https://msdn.microsoft.com/en-us/library/windows/desktop/ms686033(v=vs.85).aspx.
-	ENABLE_PROCESSED_INPUT        = 0x0001
-	ENABLE_LINE_INPUT             = 0x0002
-	ENABLE_ECHO_INPUT             = 0x0004
-	ENABLE_WINDOW_INPUT           = 0x0008
-	ENABLE_MOUSE_INPUT            = 0x0010
-	ENABLE_INSERT_MODE            = 0x0020
-	ENABLE_QUICK_EDIT_MODE        = 0x0040
-	ENABLE_EXTENDED_FLAGS         = 0x0080
-	ENABLE_AUTO_POSITION          = 0x0100
-	ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200
+	ENABLE_PROCESSED_INPUT        = windows.ENABLE_PROCESSED_INPUT
+	ENABLE_LINE_INPUT             = windows.ENABLE_LINE_INPUT
+	ENABLE_ECHO_INPUT             = windows.ENABLE_ECHO_INPUT
+	ENABLE_WINDOW_INPUT           = windows.ENABLE_WINDOW_INPUT
+	ENABLE_MOUSE_INPUT            = windows.ENABLE_MOUSE_INPUT
+	ENABLE_INSERT_MODE            = windows.ENABLE_INSERT_MODE
+	ENABLE_QUICK_EDIT_MODE        = windows.ENABLE_QUICK_EDIT_MODE
+	ENABLE_EXTENDED_FLAGS         = windows.ENABLE_EXTENDED_FLAGS
+	ENABLE_AUTO_POSITION          = windows.ENABLE_AUTO_POSITION
+	ENABLE_VIRTUAL_TERMINAL_INPUT = windows.ENABLE_VIRTUAL_TERMINAL_INPUT
 
-	ENABLE_PROCESSED_OUTPUT            = 0x0001
-	ENABLE_WRAP_AT_EOL_OUTPUT          = 0x0002
-	ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
-	DISABLE_NEWLINE_AUTO_RETURN        = 0x0008
-	ENABLE_LVB_GRID_WORLDWIDE          = 0x0010
+	ENABLE_PROCESSED_OUTPUT            = windows.ENABLE_PROCESSED_OUTPUT
+	ENABLE_WRAP_AT_EOL_OUTPUT          = windows.ENABLE_WRAP_AT_EOL_OUTPUT
+	ENABLE_VIRTUAL_TERMINAL_PROCESSING = windows.ENABLE_VIRTUAL_TERMINAL_PROCESSING
+	DISABLE_NEWLINE_AUTO_RETURN        = windows.DISABLE_NEWLINE_AUTO_RETURN
+	ENABLE_LVB_GRID_WORLDWIDE          = windows.ENABLE_LVB_GRID_WORLDWIDE
+)
 
-	// Character attributes
-	// Note:
-	// -- The attributes are combined to produce various colors (e.g., Blue + Green will create Cyan).
-	//    Clearing all foreground or background colors results in black; setting all creates white.
-	// See https://msdn.microsoft.com/en-us/library/windows/desktop/ms682088(v=vs.85).aspx#_win32_character_attributes.
+// Character attributes
+//
+// Foreground and background attributes can be combined to produce colors.
+// Clearing all foreground or background color bits produces black; setting
+// all color bits produces white.
+//
+// See https://learn.microsoft.com/windows/console/char-info-str.
+const (
 	FOREGROUND_BLUE      uint16 = 0x0001
 	FOREGROUND_GREEN     uint16 = 0x0002
 	FOREGROUND_RED       uint16 = 0x0004
@@ -88,23 +91,29 @@ const (
 	COMMON_LVB_MASK          uint16 = 0xFF00
 	COMMON_LVB_REVERSE_VIDEO uint16 = 0x4000
 	COMMON_LVB_UNDERSCORE    uint16 = 0x8000
+)
 
-	// Input event types
-	// See https://msdn.microsoft.com/en-us/library/windows/desktop/ms683499(v=vs.85).aspx.
-	KEY_EVENT                = 0x0001
-	MOUSE_EVENT              = 0x0002
-	WINDOW_BUFFER_SIZE_EVENT = 0x0004
-	MENU_EVENT               = 0x0008
-	FOCUS_EVENT              = 0x0010
+// Input event types
+// See https://msdn.microsoft.com/en-us/library/windows/desktop/ms683499(v=vs.85).aspx.
+const (
+	KEY_EVENT                = windows.KEY_EVENT
+	MOUSE_EVENT              = windows.MOUSE_EVENT
+	WINDOW_BUFFER_SIZE_EVENT = windows.WINDOW_BUFFER_SIZE_EVENT
+	MENU_EVENT               = windows.MENU_EVENT
+	FOCUS_EVENT              = windows.FOCUS_EVENT
+)
 
-	// WaitForSingleObject return codes
-	WAIT_ABANDONED = 0x00000080
-	WAIT_FAILED    = 0xFFFFFFFF
-	WAIT_SIGNALED  = 0x0000000
-	WAIT_TIMEOUT   = 0x00000102
+// WaitForSingleObject return codes.
+const (
+	WAIT_ABANDONED = windows.WAIT_ABANDONED
+	WAIT_FAILED    = windows.WAIT_FAILED
+	WAIT_SIGNALED  = windows.WAIT_OBJECT_0
+	WAIT_TIMEOUT   = 0x00000102 // Keep as untyped int for backward compat; windows.WAIT_TIMEOUT is typed as syscall.Errno.
+)
 
-	// WaitForSingleObject wait duration
-	WAIT_INFINITE       = 0xFFFFFFFF
+// WaitForSingleObject wait durations.
+const (
+	WAIT_INFINITE       = windows.INFINITE
 	WAIT_ONE_SECOND     = 1000
 	WAIT_HALF_SECOND    = 500
 	WAIT_QUARTER_SECOND = 250
