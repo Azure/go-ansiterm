@@ -36,7 +36,6 @@ var (
 
 	getConsoleCursorInfoProc       = kernel32DLL.NewProc("GetConsoleCursorInfo")
 	setConsoleCursorInfoProc       = kernel32DLL.NewProc("SetConsoleCursorInfo")
-	setConsoleCursorPositionProc   = kernel32DLL.NewProc("SetConsoleCursorPosition")
 	getConsoleScreenBufferInfoProc = kernel32DLL.NewProc("GetConsoleScreenBufferInfo")
 	setConsoleScreenBufferSizeProc = kernel32DLL.NewProc("SetConsoleScreenBufferSize")
 	scrollConsoleScreenBufferProc  = kernel32DLL.NewProc("ScrollConsoleScreenBufferA")
@@ -140,17 +139,11 @@ type (
 		MaximumWindowSize COORD
 	}
 
-	COORD struct {
-		X int16
-		Y int16
-	}
+	// COORD is identical to [windows.Coord] but implements [fmt.Stringer].
+	COORD windows.Coord
 
-	SMALL_RECT struct {
-		Left   int16
-		Top    int16
-		Right  int16
-		Bottom int16
-	}
+	// SMALL_RECT is identical to [windows.SmallRect] but implements [fmt.Stringer].
+	SMALL_RECT windows.SmallRect
 
 	// INPUT_RECORD is a C/C++ union of which KEY_EVENT_RECORD is one case, it is also the largest
 	// See https://msdn.microsoft.com/en-us/library/windows/desktop/ms683499(v=vs.85).aspx.
@@ -199,9 +192,7 @@ func SetConsoleCursorInfo(handle uintptr, cursorInfo *CONSOLE_CURSOR_INFO) error
 // SetConsoleCursorPosition location of the console cursor.
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms686025(v=vs.85).aspx.
 func SetConsoleCursorPosition(handle uintptr, coord COORD) error {
-	r1, r2, err := setConsoleCursorPositionProc.Call(handle, coordToPointer(coord))
-	runtime.KeepAlive(coord)
-	return checkError(r1, r2, err)
+	return windows.SetConsoleCursorPosition(windows.Handle(handle), windows.Coord(coord))
 }
 
 // GetConsoleMode gets the console mode for the given handle.
