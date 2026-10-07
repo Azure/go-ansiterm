@@ -44,7 +44,6 @@ var (
 	setConsoleWindowInfoProc       = kernel32DLL.NewProc("SetConsoleWindowInfo")
 	writeConsoleOutputProc         = kernel32DLL.NewProc("WriteConsoleOutputW")
 	readConsoleInputProc           = kernel32DLL.NewProc("ReadConsoleInputW")
-	waitForSingleObjectProc        = kernel32DLL.NewProc("WaitForSingleObject")
 )
 
 // Console modes
@@ -287,15 +286,19 @@ func ReadConsoleInput(handle uintptr, buffer []INPUT_RECORD, count *uint32) erro
 // It returns true if the handle was signaled; false otherwise.
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms687032(v=vs.85).aspx.
 func WaitForSingleObject(handle uintptr, msWait uint32) (bool, error) {
-	r1, _, err := waitForSingleObjectProc.Call(handle, uintptr(uint32(msWait)))
-	switch r1 {
-	case WAIT_ABANDONED, WAIT_TIMEOUT:
-		return false, nil
-	case WAIT_SIGNALED:
-		return true, nil
+	event, err := windows.WaitForSingleObject(windows.Handle(handle), msWait)
+	if err != nil {
+		return false, err
 	}
-	runtime.KeepAlive(msWait)
-	return false, err
+
+	switch event {
+	case windows.WAIT_ABANDONED, uint32(windows.WAIT_TIMEOUT):
+		return false, nil
+	case windows.WAIT_OBJECT_0:
+		return true, nil
+	default:
+		return false, nil
+	}
 }
 
 // String helpers
