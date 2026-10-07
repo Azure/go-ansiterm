@@ -37,7 +37,6 @@ var (
 	getConsoleCursorInfoProc       = kernel32DLL.NewProc("GetConsoleCursorInfo")
 	setConsoleCursorInfoProc       = kernel32DLL.NewProc("SetConsoleCursorInfo")
 	setConsoleCursorPositionProc   = kernel32DLL.NewProc("SetConsoleCursorPosition")
-	setConsoleModeProc             = kernel32DLL.NewProc("SetConsoleMode")
 	getConsoleScreenBufferInfoProc = kernel32DLL.NewProc("GetConsoleScreenBufferInfo")
 	setConsoleScreenBufferSizeProc = kernel32DLL.NewProc("SetConsoleScreenBufferSize")
 	scrollConsoleScreenBufferProc  = kernel32DLL.NewProc("ScrollConsoleScreenBufferA")
@@ -197,19 +196,17 @@ func SetConsoleCursorPosition(handle uintptr, coord COORD) error {
 	return checkError(r1, r2, err)
 }
 
-// GetConsoleMode gets the console mode for given file descriptor
+// GetConsoleMode gets the console mode for the given handle.
 // See http://msdn.microsoft.com/en-us/library/windows/desktop/ms683167(v=vs.85).aspx.
 func GetConsoleMode(handle uintptr) (mode uint32, err error) {
-	err = syscall.GetConsoleMode(syscall.Handle(handle), &mode)
+	err = windows.GetConsoleMode(windows.Handle(handle), &mode)
 	return mode, err
 }
 
-// SetConsoleMode sets the console mode for given file descriptor
+// SetConsoleMode sets the console mode for the given handle.
 // See http://msdn.microsoft.com/en-us/library/windows/desktop/ms686033(v=vs.85).aspx.
 func SetConsoleMode(handle uintptr, mode uint32) error {
-	r1, r2, err := setConsoleModeProc.Call(handle, uintptr(mode), 0)
-	runtime.KeepAlive(mode)
-	return checkError(r1, r2, err)
+	return windows.SetConsoleMode(windows.Handle(handle), mode)
 }
 
 // GetConsoleScreenBufferInfo retrieves information about the specified console screen buffer.
