@@ -97,7 +97,8 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 		return false, err
 	}
 	sr := h.effectiveSr(info.Window)
-	if pos.Y == sr.bottom {
+	switch {
+	case pos.Y == sr.bottom:
 		// Scrolling is necessary. Let Windows automatically scroll if the scrolling region
 		// is the full window.
 		if sr.top == info.Window.Top && sr.bottom == info.Window.Bottom {
@@ -125,7 +126,7 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 		}
 		return true, nil
 
-	} else if pos.Y < info.Window.Bottom {
+	case pos.Y < info.Window.Bottom:
 		// Let Windows handle the LF.
 		pos.Y++
 		if includeCR {
@@ -133,7 +134,8 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 		}
 		h.updatePos(pos)
 		return false, nil
-	} else {
+
+	default:
 		// The cursor is at the bottom of the screen but outside the scroll
 		// region. Skip the LF.
 		h.logf("Simulating LF outside scroll region")
@@ -153,28 +155,25 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 // executeLF executes a LF without a CR.
 func (h *windowsAnsiEventHandler) executeLF() error {
 	handled, err := h.simulateLF(false)
+	if err != nil || handled {
+		return err
+	}
+
+	// Windows LF will reset the cursor column position. Write the LF
+	// and restore the cursor position.
+	pos, _, err := h.getCurrentInfo()
 	if err != nil {
 		return err
 	}
-	if !handled {
-		// Windows LF will reset the cursor column position. Write the LF
-		// and restore the cursor position.
-		pos, _, err := h.getCurrentInfo()
-		if err != nil {
-			return err
-		}
-		h.buffer.WriteByte(ansiterm.ANSI_LINE_FEED)
-		if pos.X != 0 {
-			if err := h.Flush(); err != nil {
-				return err
-			}
-			h.logf("Resetting cursor position for LF without CR")
-			if err := SetConsoleCursorPosition(h.fd, pos); err != nil {
-				return err
-			}
-		}
+	h.buffer.WriteByte(ansiterm.ANSI_LINE_FEED)
+	if pos.X == 0 {
+		return nil
 	}
-	return nil
+	if err := h.Flush(); err != nil {
+		return err
+	}
+	h.logf("Resetting cursor position for LF without CR")
+	return SetConsoleCursorPosition(h.fd, pos)
 }
 
 func (h *windowsAnsiEventHandler) Print(b byte) error {
@@ -373,7 +372,7 @@ func (h *windowsAnsiEventHandler) CUP(row int, col int) error {
 	}
 
 	window := h.getCursorWindow(info)
-	position := COORD{window.Left + int16(col) - 1, window.Top + int16(row) - 1}
+	position := COORD{X: window.Left + int16(col) - 1, Y: window.Top + int16(row) - 1}
 	return h.setCursorPosition(position, window)
 }
 
@@ -423,7 +422,7 @@ func (h *windowsAnsiEventHandler) DECCOLM(use132 bool) error {
 		targetWidth = 132
 	}
 	if info.Size.X < targetWidth {
-		if err := SetConsoleScreenBufferSize(h.fd, COORD{targetWidth, info.Size.Y}); err != nil {
+		if err := SetConsoleScreenBufferSize(h.fd, COORD{X: targetWidth, Y: info.Size.Y}); err != nil {
 			h.logf("set buffer failed: %v", err)
 			return err
 		}
@@ -436,12 +435,12 @@ func (h *windowsAnsiEventHandler) DECCOLM(use132 bool) error {
 		return err
 	}
 	if info.Size.X > targetWidth {
-		if err := SetConsoleScreenBufferSize(h.fd, COORD{targetWidth, info.Size.Y}); err != nil {
+		if err := SetConsoleScreenBufferSize(h.fd, COORD{X: targetWidth, Y: info.Size.Y}); err != nil {
 			h.logf("set buffer failed: %v", err)
 			return err
 		}
 	}
-	return SetConsoleCursorPosition(h.fd, COORD{0, 0})
+	return SetConsoleCursorPosition(h.fd, COORD{X: 0, Y: 0})
 }
 
 func (h *windowsAnsiEventHandler) ED(param int) error {
@@ -462,25 +461,23 @@ func (h *windowsAnsiEventHandler) ED(param int) error {
 		return err
 	}
 
-	var start COORD
-	var end COORD
+	var start, end COORD
 
 	switch param {
 	case 0:
 		start = info.CursorPosition
-		end = COORD{info.Size.X - 1, info.Size.Y - 1}
+		end = COORD{X: info.Size.X - 1, Y: info.Size.Y - 1}
 
 	case 1:
-		start = COORD{0, 0}
+		start = COORD{X: 0, Y: 0}
 		end = info.CursorPosition
 
 	case 2:
-		start = COORD{0, 0}
-		end = COORD{info.Size.X - 1, info.Size.Y - 1}
+		start = COORD{X: 0, Y: 0}
+		end = COORD{X: info.Size.X - 1, Y: info.Size.Y - 1}
 	}
 
-	err = h.clearRange(h.attributes, start, end)
-	if err != nil {
+	if err := h.clearRange(h.attributes, start, end); err != nil {
 		return err
 	}
 
@@ -495,9 +492,7 @@ func (h *windowsAnsiEventHandler) ED(param int) error {
 		if err := SetConsoleCursorPosition(h.fd, pos); err != nil {
 			return err
 		}
-		if err := SetConsoleWindowInfo(h.fd, true, window); err != nil {
-			return err
-		}
+		return SetConsoleWindowInfo(h.fd, true, window)
 	}
 
 	return nil
@@ -519,29 +514,23 @@ func (h *windowsAnsiEventHandler) EL(param int) error {
 		return err
 	}
 
-	var start COORD
-	var end COORD
+	var start, end COORD
 
 	switch param {
 	case 0:
 		start = info.CursorPosition
-		end = COORD{info.Size.X, info.CursorPosition.Y}
+		end = COORD{X: info.Size.X, Y: info.CursorPosition.Y}
 
 	case 1:
-		start = COORD{0, info.CursorPosition.Y}
+		start = COORD{X: 0, Y: info.CursorPosition.Y}
 		end = info.CursorPosition
 
 	case 2:
-		start = COORD{0, info.CursorPosition.Y}
-		end = COORD{info.Size.X, info.CursorPosition.Y}
+		start = COORD{X: 0, Y: info.CursorPosition.Y}
+		end = COORD{X: info.Size.X, Y: info.CursorPosition.Y}
 	}
 
-	err = h.clearRange(h.attributes, start, end)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return h.clearRange(h.attributes, start, end)
 }
 
 func (h *windowsAnsiEventHandler) IL(param int) error {
@@ -611,12 +600,7 @@ func (h *windowsAnsiEventHandler) SGR(params []int) error {
 	if h.inverted {
 		attributes = invertAttributes(attributes)
 	}
-	err := SetConsoleTextAttribute(h.fd, attributes)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return SetConsoleTextAttribute(h.fd, attributes)
 }
 
 func (h *windowsAnsiEventHandler) SU(param int) error {
@@ -701,10 +685,12 @@ func (h *windowsAnsiEventHandler) Flush() error {
 			return err
 		}
 
-		charInfo := []CHAR_INFO{{UnicodeChar: uint16(h.marginByte), Attributes: info.Attributes}}
-		size := COORD{1, 1}
-		position := COORD{0, 0}
-		region := SMALL_RECT{Left: info.CursorPosition.X, Top: info.CursorPosition.Y, Right: info.CursorPosition.X, Bottom: info.CursorPosition.Y}
+		var (
+			charInfo = []CHAR_INFO{{UnicodeChar: uint16(h.marginByte), Attributes: info.Attributes}}
+			size     = COORD{X: 1, Y: 1}
+			position = COORD{X: 0, Y: 0}
+			region   = SMALL_RECT{Left: info.CursorPosition.X, Top: info.CursorPosition.Y, Right: info.CursorPosition.X, Bottom: info.CursorPosition.Y}
+		)
 		if err := WriteConsoleOutput(h.fd, charInfo, size, position, &region); err != nil {
 			return err
 		}
