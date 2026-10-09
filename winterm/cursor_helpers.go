@@ -60,11 +60,7 @@ func (h *windowsAnsiEventHandler) moveCursor(moveMode int, param int) error {
 		position.Y += int16(param)
 	}
 
-	if err = h.setCursorPosition(position, h.getCursorWindow(info)); err != nil {
-		return err
-	}
-
-	return nil
+	return h.setCursorPosition(position, h.getCursorWindow(info))
 }
 
 func (h *windowsAnsiEventHandler) moveCursorLine(param int) error {
