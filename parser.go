@@ -21,6 +21,10 @@ type AnsiParser struct {
 	stateMap           []state
 
 	logf func(string, ...any)
+
+	// oscUtf8Remain is the number of UTF-8 continuation bytes still
+	// expected inside an OSC string. C1 controls use the same bytes.
+	oscUtf8Remain int
 }
 
 type Option func(*AnsiParser)
