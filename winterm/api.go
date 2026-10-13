@@ -3,7 +3,6 @@
 package winterm
 
 import (
-	"fmt"
 	"runtime"
 	"syscall"
 	"unsafe"
@@ -130,20 +129,19 @@ type (
 		Visible int32
 	}
 
-	// CONSOLE_SCREEN_BUFFER_INFO is identical to [windows.ConsoleScreenBufferInfo]
-	// but implements [fmt.Stringer].
-	CONSOLE_SCREEN_BUFFER_INFO struct {
-		Size              COORD
-		CursorPosition    COORD
-		Attributes        uint16
-		Window            SMALL_RECT
-		MaximumWindowSize COORD
-	}
+	// CONSOLE_SCREEN_BUFFER_INFO is identical to [windows.ConsoleScreenBufferInfo].
+	//
+	// Deprecated: use [windows.ConsoleScreenBufferInfo].
+	CONSOLE_SCREEN_BUFFER_INFO = windows.ConsoleScreenBufferInfo
 
-	// COORD is identical to [windows.Coord] but implements [fmt.Stringer].
-	COORD windows.Coord
+	// COORD is identical to [windows.Coord].
+	//
+	// Deprecated: use [windows.Coord].
+	COORD = windows.Coord
 
-	// SMALL_RECT is identical to [windows.SmallRect] but implements [fmt.Stringer].
+	// SMALL_RECT is identical to [windows.SmallRect].
+	//
+	// Deprecated: use [windows.SmallRect].
 	SMALL_RECT windows.SmallRect
 
 	// INPUT_RECORD is a C/C++ union of which KEY_EVENT_RECORD is one case, it is also the largest
@@ -163,7 +161,7 @@ type (
 	}
 
 	WINDOW_BUFFER_SIZE struct {
-		Size COORD
+		Size windows.Coord
 	}
 )
 
@@ -192,12 +190,16 @@ func SetConsoleCursorInfo(handle uintptr, cursorInfo *CONSOLE_CURSOR_INFO) error
 
 // SetConsoleCursorPosition location of the console cursor.
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms686025(v=vs.85).aspx.
-func SetConsoleCursorPosition(handle uintptr, coord COORD) error {
-	return windows.SetConsoleCursorPosition(windows.Handle(handle), windows.Coord(coord))
+//
+// Deprecated: use [windows.SetConsoleCursorPosition].
+func SetConsoleCursorPosition(handle uintptr, coord windows.Coord) error {
+	return windows.SetConsoleCursorPosition(windows.Handle(handle), coord)
 }
 
 // GetConsoleMode gets the console mode for the given handle.
 // See http://msdn.microsoft.com/en-us/library/windows/desktop/ms683167(v=vs.85).aspx.
+//
+// Deprecated: use [windows.GetConsoleMode].
 func GetConsoleMode(handle uintptr) (mode uint32, err error) {
 	err = windows.GetConsoleMode(windows.Handle(handle), &mode)
 	return mode, err
@@ -205,28 +207,25 @@ func GetConsoleMode(handle uintptr) (mode uint32, err error) {
 
 // SetConsoleMode sets the console mode for the given handle.
 // See http://msdn.microsoft.com/en-us/library/windows/desktop/ms686033(v=vs.85).aspx.
+//
+// Deprecated: use [windows.SetConsoleMode].
 func SetConsoleMode(handle uintptr, mode uint32) error {
 	return windows.SetConsoleMode(windows.Handle(handle), mode)
 }
 
 // GetConsoleScreenBufferInfo retrieves information about the specified console screen buffer.
 // See http://msdn.microsoft.com/en-us/library/windows/desktop/ms683171(v=vs.85).aspx.
-func GetConsoleScreenBufferInfo(handle uintptr) (*CONSOLE_SCREEN_BUFFER_INFO, error) {
+//
+// Deprecated: use [windows.GetConsoleScreenBufferInfo].
+func GetConsoleScreenBufferInfo(handle uintptr) (*windows.ConsoleScreenBufferInfo, error) {
 	var info windows.ConsoleScreenBufferInfo
 	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(handle), &info); err != nil {
 		return nil, err
 	}
-
-	return &CONSOLE_SCREEN_BUFFER_INFO{
-		Size:              COORD(info.Size),
-		CursorPosition:    COORD(info.CursorPosition),
-		Attributes:        info.Attributes,
-		Window:            SMALL_RECT(info.Window),
-		MaximumWindowSize: COORD(info.MaximumWindowSize),
-	}, nil
+	return &info, nil
 }
 
-func ScrollConsoleScreenBuffer(handle uintptr, scrollRect SMALL_RECT, clipRect SMALL_RECT, destOrigin COORD, char CHAR_INFO) error {
+func ScrollConsoleScreenBuffer(handle uintptr, scrollRect windows.SmallRect, clipRect windows.SmallRect, destOrigin windows.Coord, char CHAR_INFO) error {
 	r1, r2, err := scrollConsoleScreenBufferProc.Call(handle, uintptr(unsafe.Pointer(&scrollRect)), uintptr(unsafe.Pointer(&clipRect)), coordToPointer(destOrigin), uintptr(unsafe.Pointer(&char)))
 	runtime.KeepAlive(scrollRect)
 	runtime.KeepAlive(clipRect)
@@ -237,7 +236,7 @@ func ScrollConsoleScreenBuffer(handle uintptr, scrollRect SMALL_RECT, clipRect S
 
 // SetConsoleScreenBufferSize sets the size of the console screen buffer.
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms686044(v=vs.85).aspx.
-func SetConsoleScreenBufferSize(handle uintptr, coord COORD) error {
+func SetConsoleScreenBufferSize(handle uintptr, coord windows.Coord) error {
 	r1, r2, err := setConsoleScreenBufferSizeProc.Call(handle, coordToPointer(coord))
 	runtime.KeepAlive(coord)
 	return checkError(r1, r2, err)
@@ -255,7 +254,7 @@ func SetConsoleTextAttribute(handle uintptr, attribute uint16) error {
 // SetConsoleWindowInfo sets the size and position of the console screen buffer's window.
 // Note that the size and location must be within and no larger than the backing console screen buffer.
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms686125(v=vs.85).aspx.
-func SetConsoleWindowInfo(handle uintptr, isAbsolute bool, rect SMALL_RECT) error {
+func SetConsoleWindowInfo(handle uintptr, isAbsolute bool, rect windows.SmallRect) error {
 	r1, r2, err := setConsoleWindowInfoProc.Call(handle, uintptr(boolToBOOL(isAbsolute)), uintptr(unsafe.Pointer(&rect)))
 	runtime.KeepAlive(isAbsolute)
 	runtime.KeepAlive(rect)
@@ -264,7 +263,7 @@ func SetConsoleWindowInfo(handle uintptr, isAbsolute bool, rect SMALL_RECT) erro
 
 // WriteConsoleOutput writes the CHAR_INFOs from the provided buffer to the active console buffer.
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms687404(v=vs.85).aspx.
-func WriteConsoleOutput(handle uintptr, buffer []CHAR_INFO, bufferSize COORD, bufferCoord COORD, writeRegion *SMALL_RECT) error {
+func WriteConsoleOutput(handle uintptr, buffer []CHAR_INFO, bufferSize windows.Coord, bufferCoord windows.Coord, writeRegion *windows.SmallRect) error {
 	r1, r2, err := writeConsoleOutputProc.Call(handle, uintptr(unsafe.Pointer(&buffer[0])), coordToPointer(bufferSize), coordToPointer(bufferCoord), uintptr(unsafe.Pointer(writeRegion)))
 	runtime.KeepAlive(buffer)
 	runtime.KeepAlive(bufferSize)
@@ -299,19 +298,6 @@ func WaitForSingleObject(handle uintptr, msWait uint32) (bool, error) {
 	}
 }
 
-// String helpers
-func (info CONSOLE_SCREEN_BUFFER_INFO) String() string {
-	return fmt.Sprintf("Size(%v) Cursor(%v) Window(%v) Max(%v)", info.Size, info.CursorPosition, info.Window, info.MaximumWindowSize)
-}
-
-func (coord COORD) String() string {
-	return fmt.Sprintf("%v,%v", coord.X, coord.Y)
-}
-
-func (rect SMALL_RECT) String() string {
-	return fmt.Sprintf("(%v,%v),(%v,%v)", rect.Left, rect.Top, rect.Right, rect.Bottom)
-}
-
 // checkError evaluates the results of a Windows API call and returns the error if it failed.
 func checkError(r1, r2 uintptr, err error) error {
 	// Windows APIs return non-zero to indicate success
@@ -326,8 +312,8 @@ func checkError(r1, r2 uintptr, err error) error {
 	return syscall.EINVAL
 }
 
-// coordToPointer converts a COORD into a uintptr (by fooling the type system).
-func coordToPointer(c COORD) uintptr {
+// coordToPointer converts a windows.Coord into a uintptr (by fooling the type system).
+func coordToPointer(c windows.Coord) uintptr {
 	// Note: This code assumes the two SHORTs are correctly laid out; the "cast" to uint32 is just to get a pointer to pass.
 	return uintptr(*((*uint32)(unsafe.Pointer(&c))))
 }

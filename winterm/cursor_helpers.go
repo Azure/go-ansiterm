@@ -2,6 +2,8 @@
 
 package winterm
 
+import "golang.org/x/sys/windows"
+
 const (
 	horizontal = iota
 	vertical
@@ -9,35 +11,33 @@ const (
 	column
 )
 
-func (h *windowsAnsiEventHandler) getCursorWindow(info *CONSOLE_SCREEN_BUFFER_INFO) SMALL_RECT {
+func (h *windowsAnsiEventHandler) getCursorWindow(info *windows.ConsoleScreenBufferInfo) windows.SmallRect {
 	if h.originMode {
 		sr := h.effectiveSr(info.Window)
-		return SMALL_RECT{
+		return windows.SmallRect{
 			Top:    sr.top,
 			Bottom: sr.bottom,
 			Left:   0,
 			Right:  info.Size.X - 1,
 		}
-	} else {
-		return SMALL_RECT{
-			Top:    info.Window.Top,
-			Bottom: info.Window.Bottom,
-			Left:   0,
-			Right:  info.Size.X - 1,
-		}
+	}
+	return windows.SmallRect{
+		Top:    info.Window.Top,
+		Bottom: info.Window.Bottom,
+		Left:   0,
+		Right:  info.Size.X - 1,
 	}
 }
 
 // setCursorPosition sets the cursor to the specified position, bounded to the screen size
-func (h *windowsAnsiEventHandler) setCursorPosition(position COORD, window SMALL_RECT) error {
+func (h *windowsAnsiEventHandler) setCursorPosition(position windows.Coord, window windows.SmallRect) error {
 	position.X = ensureInRange(position.X, window.Left, window.Right)
 	position.Y = ensureInRange(position.Y, window.Top, window.Bottom)
-	err := SetConsoleCursorPosition(h.fd, position)
-	if err != nil {
+	if err := windows.SetConsoleCursorPosition(windows.Handle(h.fd), position); err != nil {
 		return err
 	}
 	h.logf("Cursor position set: (%d, %d)", position.X, position.Y)
-	return err
+	return nil
 }
 
 func (h *windowsAnsiEventHandler) moveCursorVertical(param int) error {
@@ -49,8 +49,8 @@ func (h *windowsAnsiEventHandler) moveCursorHorizontal(param int) error {
 }
 
 func (h *windowsAnsiEventHandler) moveCursor(moveMode int, param int) error {
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle((h.fd), &info); err != nil {
 		return err
 	}
 
@@ -67,7 +67,7 @@ func (h *windowsAnsiEventHandler) moveCursor(moveMode int, param int) error {
 		position.X = int16(param) - 1
 	}
 
-	return h.setCursorPosition(position, h.getCursorWindow(info))
+	return h.setCursorPosition(position, h.getCursorWindow(&info))
 }
 
 func (h *windowsAnsiEventHandler) moveCursorLine(param int) error {

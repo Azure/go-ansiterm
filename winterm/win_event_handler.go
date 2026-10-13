@@ -9,12 +9,13 @@ import (
 	"strconv"
 
 	"github.com/Azure/go-ansiterm"
+	"golang.org/x/sys/windows"
 )
 
 type windowsAnsiEventHandler struct {
 	fd             uintptr
 	file           *os.File
-	infoReset      *CONSOLE_SCREEN_BUFFER_INFO
+	infoReset      *windows.ConsoleScreenBufferInfo
 	sr             scrollRegion
 	buffer         bytes.Buffer
 	attributes     uint16
@@ -23,8 +24,8 @@ type windowsAnsiEventHandler struct {
 	drewMarginByte bool
 	originMode     bool
 	marginByte     byte
-	curInfo        *CONSOLE_SCREEN_BUFFER_INFO
-	curPos         COORD
+	curInfo        *windows.ConsoleScreenBufferInfo
+	curPos         windows.Coord
 	logf           func(string, ...interface{})
 }
 
@@ -37,15 +38,15 @@ func WithLogf(f func(string, ...interface{})) Option {
 }
 
 func CreateWinEventHandler(fd uintptr, file *os.File, opts ...Option) ansiterm.AnsiEventHandler {
-	infoReset, err := GetConsoleScreenBufferInfo(fd)
-	if err != nil {
+	var infoReset windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(fd), &infoReset); err != nil {
 		return nil
 	}
 
 	h := &windowsAnsiEventHandler{
 		fd:         fd,
 		file:       file,
-		infoReset:  infoReset,
+		infoReset:  &infoReset,
 		attributes: infoReset.Attributes,
 	}
 	for _, o := range opts {
@@ -97,7 +98,8 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 		return false, err
 	}
 	sr := h.effectiveSr(info.Window)
-	if pos.Y == sr.bottom {
+	switch {
+	case pos.Y == sr.bottom:
 		// Scrolling is necessary. Let Windows automatically scroll if the scrolling region
 		// is the full window.
 		if sr.top == info.Window.Top && sr.bottom == info.Window.Bottom {
@@ -119,13 +121,13 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 		}
 		if includeCR {
 			pos.X = 0
-			if err := SetConsoleCursorPosition(h.fd, pos); err != nil {
+			if err := windows.SetConsoleCursorPosition(windows.Handle(h.fd), pos); err != nil {
 				return false, err
 			}
 		}
 		return true, nil
 
-	} else if pos.Y < info.Window.Bottom {
+	case pos.Y < info.Window.Bottom:
 		// Let Windows handle the LF.
 		pos.Y++
 		if includeCR {
@@ -133,7 +135,8 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 		}
 		h.updatePos(pos)
 		return false, nil
-	} else {
+
+	default:
 		// The cursor is at the bottom of the screen but outside the scroll
 		// region. Skip the LF.
 		h.logf("Simulating LF outside scroll region")
@@ -142,7 +145,7 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 				return false, err
 			}
 			pos.X = 0
-			if err := SetConsoleCursorPosition(h.fd, pos); err != nil {
+			if err := windows.SetConsoleCursorPosition(windows.Handle(h.fd), pos); err != nil {
 				return false, err
 			}
 		}
@@ -153,26 +156,25 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 // executeLF executes a LF without a CR.
 func (h *windowsAnsiEventHandler) executeLF() error {
 	handled, err := h.simulateLF(false)
+	if err != nil || handled {
+		return err
+	}
+
+	// Windows LF will reset the cursor column position. Write the LF
+	// and restore the cursor position.
+	pos, _, err := h.getCurrentInfo()
 	if err != nil {
 		return err
 	}
-	if !handled {
-		// Windows LF will reset the cursor column position. Write the LF
-		// and restore the cursor position.
-		pos, _, err := h.getCurrentInfo()
-		if err != nil {
-			return err
-		}
-		h.buffer.WriteByte(ansiterm.ANSI_LINE_FEED)
-		if pos.X != 0 {
-			if err := h.Flush(); err != nil {
-				return err
-			}
-			h.logf("Resetting cursor position for LF without CR")
-			return SetConsoleCursorPosition(h.fd, pos)
-		}
+	h.buffer.WriteByte(ansiterm.ANSI_LINE_FEED)
+	if pos.X == 0 {
+		return nil
 	}
-	return nil
+	if err := h.Flush(); err != nil {
+		return err
+	}
+	h.logf("Resetting cursor position for LF without CR")
+	return windows.SetConsoleCursorPosition(windows.Handle(h.fd), pos)
 }
 
 func (h *windowsAnsiEventHandler) Print(b byte) error {
@@ -215,7 +217,7 @@ func (h *windowsAnsiEventHandler) Execute(b byte) error {
 			if err := h.Flush(); err != nil {
 				return err
 			}
-			if err := SetConsoleCursorPosition(h.fd, pos); err != nil {
+			if err := windows.SetConsoleCursorPosition(windows.Handle(h.fd), pos); err != nil {
 				return err
 			}
 		}
@@ -349,11 +351,11 @@ func (h *windowsAnsiEventHandler) VPA(param int) error {
 	}
 	h.logf("VPA: [[%d]]", param)
 	h.clearWrap()
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 		return err
 	}
-	window := h.getCursorWindow(info)
+	window := h.getCursorWindow(&info)
 	position := info.CursorPosition
 	position.Y = window.Top + int16(param) - 1
 	return h.setCursorPosition(position, window)
@@ -365,13 +367,13 @@ func (h *windowsAnsiEventHandler) CUP(row int, col int) error {
 	}
 	h.logf("CUP: [[%d %d]]", row, col)
 	h.clearWrap()
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 		return err
 	}
 
-	window := h.getCursorWindow(info)
-	position := COORD{X: window.Left + int16(col) - 1, Y: window.Top + int16(row) - 1}
+	window := h.getCursorWindow(&info)
+	position := windows.Coord{X: window.Left + int16(col) - 1, Y: window.Top + int16(row) - 1}
 	return h.setCursorPosition(position, window)
 }
 
@@ -412,8 +414,8 @@ func (h *windowsAnsiEventHandler) DECCOLM(use132 bool) error {
 	if err := h.ED(2); err != nil {
 		return err
 	}
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 		return err
 	}
 	targetWidth := int16(80)
@@ -421,7 +423,7 @@ func (h *windowsAnsiEventHandler) DECCOLM(use132 bool) error {
 		targetWidth = 132
 	}
 	if info.Size.X < targetWidth {
-		if err := SetConsoleScreenBufferSize(h.fd, COORD{X: targetWidth, Y: info.Size.Y}); err != nil {
+		if err := SetConsoleScreenBufferSize(h.fd, windows.Coord{X: targetWidth, Y: info.Size.Y}); err != nil {
 			h.logf("set buffer failed: %v", err)
 			return err
 		}
@@ -434,12 +436,12 @@ func (h *windowsAnsiEventHandler) DECCOLM(use132 bool) error {
 		return err
 	}
 	if info.Size.X > targetWidth {
-		if err := SetConsoleScreenBufferSize(h.fd, COORD{X: targetWidth, Y: info.Size.Y}); err != nil {
+		if err := SetConsoleScreenBufferSize(h.fd, windows.Coord{X: targetWidth, Y: info.Size.Y}); err != nil {
 			h.logf("set buffer failed: %v", err)
 			return err
 		}
 	}
-	return SetConsoleCursorPosition(h.fd, COORD{X: 0, Y: 0})
+	return windows.SetConsoleCursorPosition(windows.Handle(h.fd), windows.Coord{X: 0, Y: 0})
 }
 
 func (h *windowsAnsiEventHandler) ED(param int) error {
@@ -455,30 +457,28 @@ func (h *windowsAnsiEventHandler) ED(param int) error {
 	// Notes:
 	// -- Clearing the entire buffer, versus just the Window, works best for Windows Consoles
 
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 		return err
 	}
 
-	var start COORD
-	var end COORD
+	var start, end windows.Coord
 
 	switch param {
 	case 0:
 		start = info.CursorPosition
-		end = COORD{X: info.Size.X - 1, Y: info.Size.Y - 1}
+		end = windows.Coord{X: info.Size.X - 1, Y: info.Size.Y - 1}
 
 	case 1:
-		start = COORD{X: 0, Y: 0}
+		start = windows.Coord{X: 0, Y: 0}
 		end = info.CursorPosition
 
 	case 2:
-		start = COORD{X: 0, Y: 0}
-		end = COORD{X: info.Size.X - 1, Y: info.Size.Y - 1}
+		start = windows.Coord{X: 0, Y: 0}
+		end = windows.Coord{X: info.Size.X - 1, Y: info.Size.Y - 1}
 	}
 
-	err = h.clearRange(h.attributes, start, end)
-	if err != nil {
+	if err := h.clearRange(h.attributes, start, end); err != nil {
 		return err
 	}
 
@@ -490,7 +490,7 @@ func (h *windowsAnsiEventHandler) ED(param int) error {
 		pos.Y -= window.Top
 		window.Bottom -= window.Top
 		window.Top = 0
-		if err := SetConsoleCursorPosition(h.fd, pos); err != nil {
+		if err := windows.SetConsoleCursorPosition(windows.Handle(h.fd), pos); err != nil {
 			return err
 		}
 		return SetConsoleWindowInfo(h.fd, true, window)
@@ -510,26 +510,25 @@ func (h *windowsAnsiEventHandler) EL(param int) error {
 	// [1K -- Erases from the beginning of the line to the cursor, including the cursor position.
 	// [2K -- Erases the complete line.
 
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 		return err
 	}
 
-	var start COORD
-	var end COORD
+	var start, end windows.Coord
 
 	switch param {
 	case 0:
 		start = info.CursorPosition
-		end = COORD{X: info.Size.X, Y: info.CursorPosition.Y}
+		end = windows.Coord{X: info.Size.X, Y: info.CursorPosition.Y}
 
 	case 1:
-		start = COORD{X: 0, Y: info.CursorPosition.Y}
+		start = windows.Coord{X: 0, Y: info.CursorPosition.Y}
 		end = info.CursorPosition
 
 	case 2:
-		start = COORD{X: 0, Y: info.CursorPosition.Y}
-		end = COORD{X: info.Size.X, Y: info.CursorPosition.Y}
+		start = windows.Coord{X: 0, Y: info.CursorPosition.Y}
+		end = windows.Coord{X: info.Size.X, Y: info.CursorPosition.Y}
 	}
 
 	return h.clearRange(h.attributes, start, end)
@@ -652,8 +651,8 @@ func (h *windowsAnsiEventHandler) RI() error {
 	h.logf("RI: []")
 	h.clearWrap()
 
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 		return err
 	}
 
@@ -682,15 +681,17 @@ func (h *windowsAnsiEventHandler) Flush() error {
 	if h.wrapNext && !h.drewMarginByte {
 		h.logf("Flush: drawing margin byte '%c'", h.marginByte)
 
-		info, err := GetConsoleScreenBufferInfo(h.fd)
-		if err != nil {
+		var info windows.ConsoleScreenBufferInfo
+		if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 			return err
 		}
 
-		charInfo := []CHAR_INFO{{UnicodeChar: uint16(h.marginByte), Attributes: info.Attributes}}
-		size := COORD{X: 1, Y: 1}
-		position := COORD{X: 0, Y: 0}
-		region := SMALL_RECT{Left: info.CursorPosition.X, Top: info.CursorPosition.Y, Right: info.CursorPosition.X, Bottom: info.CursorPosition.Y}
+		var (
+			charInfo = []CHAR_INFO{{UnicodeChar: uint16(h.marginByte), Attributes: info.Attributes}}
+			size     = windows.Coord{X: 1, Y: 1}
+			position = windows.Coord{X: 0, Y: 0}
+			region   = windows.SmallRect{Left: info.CursorPosition.X, Top: info.CursorPosition.Y, Right: info.CursorPosition.X, Bottom: info.CursorPosition.Y}
+		)
 		if err := WriteConsoleOutput(h.fd, charInfo, size, position, &region); err != nil {
 			return err
 		}
@@ -701,19 +702,19 @@ func (h *windowsAnsiEventHandler) Flush() error {
 
 // cacheConsoleInfo ensures that the current console screen information has been queried
 // since the last call to Flush(). It must be called before accessing h.curInfo or h.curPos.
-func (h *windowsAnsiEventHandler) getCurrentInfo() (COORD, *CONSOLE_SCREEN_BUFFER_INFO, error) {
+func (h *windowsAnsiEventHandler) getCurrentInfo() (windows.Coord, *windows.ConsoleScreenBufferInfo, error) {
 	if h.curInfo == nil {
-		info, err := GetConsoleScreenBufferInfo(h.fd)
-		if err != nil {
-			return COORD{}, nil, err
+		var info windows.ConsoleScreenBufferInfo
+		if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
+			return windows.Coord{}, nil, err
 		}
-		h.curInfo = info
+		h.curInfo = &info
 		h.curPos = info.CursorPosition
 	}
 	return h.curPos, h.curInfo, nil
 }
 
-func (h *windowsAnsiEventHandler) updatePos(pos COORD) {
+func (h *windowsAnsiEventHandler) updatePos(pos windows.Coord) {
 	if h.curInfo == nil {
 		panic("failed to call getCurrentInfo before calling updatePos")
 	}
