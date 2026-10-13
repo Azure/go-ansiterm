@@ -3,7 +3,6 @@
 package winterm
 
 import (
-	"fmt"
 	"runtime"
 	"syscall"
 	"unsafe"
@@ -130,8 +129,7 @@ type (
 		Visible int32
 	}
 
-	// CONSOLE_SCREEN_BUFFER_INFO is identical to [windows.ConsoleScreenBufferInfo]
-	// but implements [fmt.Stringer].
+	// CONSOLE_SCREEN_BUFFER_INFO is identical to [windows.ConsoleScreenBufferInfo].
 	CONSOLE_SCREEN_BUFFER_INFO struct {
 		Size              COORD
 		CursorPosition    COORD
@@ -140,10 +138,10 @@ type (
 		MaximumWindowSize COORD
 	}
 
-	// COORD is identical to [windows.Coord] but implements [fmt.Stringer].
+	// COORD is identical to [windows.Coord].
 	COORD windows.Coord
 
-	// SMALL_RECT is identical to [windows.SmallRect] but implements [fmt.Stringer].
+	// SMALL_RECT is identical to [windows.SmallRect].
 	SMALL_RECT windows.SmallRect
 
 	// INPUT_RECORD is a C/C++ union of which KEY_EVENT_RECORD is one case, it is also the largest
@@ -297,19 +295,6 @@ func WaitForSingleObject(handle uintptr, msWait uint32) (bool, error) {
 	default:
 		return false, nil
 	}
-}
-
-// String helpers
-func (info CONSOLE_SCREEN_BUFFER_INFO) String() string {
-	return fmt.Sprintf("Size(%v) Cursor(%v) Window(%v) Max(%v)", info.Size, info.CursorPosition, info.Window, info.MaximumWindowSize)
-}
-
-func (coord COORD) String() string {
-	return fmt.Sprintf("%v,%v", coord.X, coord.Y)
-}
-
-func (rect SMALL_RECT) String() string {
-	return fmt.Sprintf("(%v,%v),(%v,%v)", rect.Left, rect.Top, rect.Right, rect.Bottom)
 }
 
 // checkError evaluates the results of a Windows API call and returns the error if it failed.
