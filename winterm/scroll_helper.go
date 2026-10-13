@@ -2,8 +2,10 @@
 
 package winterm
 
+import "golang.org/x/sys/windows"
+
 // effectiveSr gets the current effective scroll region in buffer coordinates
-func (h *windowsAnsiEventHandler) effectiveSr(window SMALL_RECT) scrollRegion {
+func (h *windowsAnsiEventHandler) effectiveSr(window windows.SmallRect) scrollRegion {
 	top := addInRange(window.Top, h.sr.top, window.Top, window.Bottom)
 	bottom := addInRange(window.Top, h.sr.bottom, window.Top, window.Bottom)
 	if top >= bottom {
@@ -46,12 +48,12 @@ func (h *windowsAnsiEventHandler) insertLines(param int) error {
 }
 
 // scroll scrolls the provided scroll region by param lines. The scroll region is in buffer coordinates.
-func (h *windowsAnsiEventHandler) scroll(param int, sr scrollRegion, info *CONSOLE_SCREEN_BUFFER_INFO) error {
+func (h *windowsAnsiEventHandler) scroll(param int, sr scrollRegion, info *windows.ConsoleScreenBufferInfo) error {
 	h.logf("scroll: scrollTop: %d, scrollBottom: %d", sr.top, sr.bottom)
 	h.logf("scroll: windowTop: %d, windowBottom: %d", info.Window.Top, info.Window.Bottom)
 
 	// Copy from and clip to the scroll region (full buffer width)
-	scrollRect := SMALL_RECT{
+	scrollRect := windows.SmallRect{
 		Top:    sr.top,
 		Bottom: sr.bottom,
 		Left:   0,
@@ -59,7 +61,7 @@ func (h *windowsAnsiEventHandler) scroll(param int, sr scrollRegion, info *CONSO
 	}
 
 	// Origin to which area should be copied
-	destOrigin := COORD{
+	destOrigin := windows.Coord{
 		X: 0,
 		Y: sr.top - int16(param),
 	}
@@ -85,9 +87,9 @@ func (h *windowsAnsiEventHandler) insertCharacters(param int) error {
 }
 
 // scrollLine scrolls a line horizontally starting at the provided position by a number of columns.
-func (h *windowsAnsiEventHandler) scrollLine(columns int, position COORD, info *CONSOLE_SCREEN_BUFFER_INFO) error {
+func (h *windowsAnsiEventHandler) scrollLine(columns int, position windows.Coord, info *windows.ConsoleScreenBufferInfo) error {
 	// Copy from and clip to the scroll region (full buffer width)
-	scrollRect := SMALL_RECT{
+	scrollRect := windows.SmallRect{
 		Top:    position.Y,
 		Bottom: position.Y,
 		Left:   position.X,
@@ -95,7 +97,7 @@ func (h *windowsAnsiEventHandler) scrollLine(columns int, position COORD, info *
 	}
 
 	// Origin to which area should be copied
-	destOrigin := COORD{
+	destOrigin := windows.Coord{
 		X: position.X - int16(columns),
 		Y: position.Y,
 	}

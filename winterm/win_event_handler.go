@@ -9,12 +9,13 @@ import (
 	"strconv"
 
 	"github.com/Azure/go-ansiterm"
+	"golang.org/x/sys/windows"
 )
 
 type windowsAnsiEventHandler struct {
 	fd             uintptr
 	file           *os.File
-	infoReset      *CONSOLE_SCREEN_BUFFER_INFO
+	infoReset      *windows.ConsoleScreenBufferInfo
 	sr             scrollRegion
 	buffer         bytes.Buffer
 	attributes     uint16
@@ -23,8 +24,8 @@ type windowsAnsiEventHandler struct {
 	drewMarginByte bool
 	originMode     bool
 	marginByte     byte
-	curInfo        *CONSOLE_SCREEN_BUFFER_INFO
-	curPos         COORD
+	curInfo        *windows.ConsoleScreenBufferInfo
+	curPos         windows.Coord
 	logf           func(string, ...interface{})
 }
 
@@ -372,7 +373,7 @@ func (h *windowsAnsiEventHandler) CUP(row int, col int) error {
 	}
 
 	window := h.getCursorWindow(info)
-	position := COORD{X: window.Left + int16(col) - 1, Y: window.Top + int16(row) - 1}
+	position := windows.Coord{X: window.Left + int16(col) - 1, Y: window.Top + int16(row) - 1}
 	return h.setCursorPosition(position, window)
 }
 
@@ -422,7 +423,7 @@ func (h *windowsAnsiEventHandler) DECCOLM(use132 bool) error {
 		targetWidth = 132
 	}
 	if info.Size.X < targetWidth {
-		if err := SetConsoleScreenBufferSize(h.fd, COORD{X: targetWidth, Y: info.Size.Y}); err != nil {
+		if err := SetConsoleScreenBufferSize(h.fd, windows.Coord{X: targetWidth, Y: info.Size.Y}); err != nil {
 			h.logf("set buffer failed: %v", err)
 			return err
 		}
@@ -435,12 +436,12 @@ func (h *windowsAnsiEventHandler) DECCOLM(use132 bool) error {
 		return err
 	}
 	if info.Size.X > targetWidth {
-		if err := SetConsoleScreenBufferSize(h.fd, COORD{X: targetWidth, Y: info.Size.Y}); err != nil {
+		if err := SetConsoleScreenBufferSize(h.fd, windows.Coord{X: targetWidth, Y: info.Size.Y}); err != nil {
 			h.logf("set buffer failed: %v", err)
 			return err
 		}
 	}
-	return SetConsoleCursorPosition(h.fd, COORD{X: 0, Y: 0})
+	return SetConsoleCursorPosition(h.fd, windows.Coord{X: 0, Y: 0})
 }
 
 func (h *windowsAnsiEventHandler) ED(param int) error {
@@ -461,20 +462,20 @@ func (h *windowsAnsiEventHandler) ED(param int) error {
 		return err
 	}
 
-	var start, end COORD
+	var start, end windows.Coord
 
 	switch param {
 	case 0:
 		start = info.CursorPosition
-		end = COORD{X: info.Size.X - 1, Y: info.Size.Y - 1}
+		end = windows.Coord{X: info.Size.X - 1, Y: info.Size.Y - 1}
 
 	case 1:
-		start = COORD{X: 0, Y: 0}
+		start = windows.Coord{X: 0, Y: 0}
 		end = info.CursorPosition
 
 	case 2:
-		start = COORD{X: 0, Y: 0}
-		end = COORD{X: info.Size.X - 1, Y: info.Size.Y - 1}
+		start = windows.Coord{X: 0, Y: 0}
+		end = windows.Coord{X: info.Size.X - 1, Y: info.Size.Y - 1}
 	}
 
 	if err := h.clearRange(h.attributes, start, end); err != nil {
@@ -514,20 +515,20 @@ func (h *windowsAnsiEventHandler) EL(param int) error {
 		return err
 	}
 
-	var start, end COORD
+	var start, end windows.Coord
 
 	switch param {
 	case 0:
 		start = info.CursorPosition
-		end = COORD{X: info.Size.X, Y: info.CursorPosition.Y}
+		end = windows.Coord{X: info.Size.X, Y: info.CursorPosition.Y}
 
 	case 1:
-		start = COORD{X: 0, Y: info.CursorPosition.Y}
+		start = windows.Coord{X: 0, Y: info.CursorPosition.Y}
 		end = info.CursorPosition
 
 	case 2:
-		start = COORD{X: 0, Y: info.CursorPosition.Y}
-		end = COORD{X: info.Size.X, Y: info.CursorPosition.Y}
+		start = windows.Coord{X: 0, Y: info.CursorPosition.Y}
+		end = windows.Coord{X: info.Size.X, Y: info.CursorPosition.Y}
 	}
 
 	return h.clearRange(h.attributes, start, end)
@@ -687,9 +688,9 @@ func (h *windowsAnsiEventHandler) Flush() error {
 
 		var (
 			charInfo = []CHAR_INFO{{UnicodeChar: uint16(h.marginByte), Attributes: info.Attributes}}
-			size     = COORD{X: 1, Y: 1}
-			position = COORD{X: 0, Y: 0}
-			region   = SMALL_RECT{Left: info.CursorPosition.X, Top: info.CursorPosition.Y, Right: info.CursorPosition.X, Bottom: info.CursorPosition.Y}
+			size     = windows.Coord{X: 1, Y: 1}
+			position = windows.Coord{X: 0, Y: 0}
+			region   = windows.SmallRect{Left: info.CursorPosition.X, Top: info.CursorPosition.Y, Right: info.CursorPosition.X, Bottom: info.CursorPosition.Y}
 		)
 		if err := WriteConsoleOutput(h.fd, charInfo, size, position, &region); err != nil {
 			return err
@@ -701,11 +702,11 @@ func (h *windowsAnsiEventHandler) Flush() error {
 
 // cacheConsoleInfo ensures that the current console screen information has been queried
 // since the last call to Flush(). It must be called before accessing h.curInfo or h.curPos.
-func (h *windowsAnsiEventHandler) getCurrentInfo() (COORD, *CONSOLE_SCREEN_BUFFER_INFO, error) {
+func (h *windowsAnsiEventHandler) getCurrentInfo() (windows.Coord, *windows.ConsoleScreenBufferInfo, error) {
 	if h.curInfo == nil {
 		info, err := GetConsoleScreenBufferInfo(h.fd)
 		if err != nil {
-			return COORD{}, nil, err
+			return windows.Coord{}, nil, err
 		}
 		h.curInfo = info
 		h.curPos = info.CursorPosition
@@ -713,7 +714,7 @@ func (h *windowsAnsiEventHandler) getCurrentInfo() (COORD, *CONSOLE_SCREEN_BUFFE
 	return h.curPos, h.curInfo, nil
 }
 
-func (h *windowsAnsiEventHandler) updatePos(pos COORD) {
+func (h *windowsAnsiEventHandler) updatePos(pos windows.Coord) {
 	if h.curInfo == nil {
 		panic("failed to call getCurrentInfo before calling updatePos")
 	}

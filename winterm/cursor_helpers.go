@@ -2,6 +2,8 @@
 
 package winterm
 
+import "golang.org/x/sys/windows"
+
 const (
 	horizontal = iota
 	vertical
@@ -9,17 +11,17 @@ const (
 	column
 )
 
-func (h *windowsAnsiEventHandler) getCursorWindow(info *CONSOLE_SCREEN_BUFFER_INFO) SMALL_RECT {
+func (h *windowsAnsiEventHandler) getCursorWindow(info *windows.ConsoleScreenBufferInfo) windows.SmallRect {
 	if h.originMode {
 		sr := h.effectiveSr(info.Window)
-		return SMALL_RECT{
+		return windows.SmallRect{
 			Top:    sr.top,
 			Bottom: sr.bottom,
 			Left:   0,
 			Right:  info.Size.X - 1,
 		}
 	}
-	return SMALL_RECT{
+	return windows.SmallRect{
 		Top:    info.Window.Top,
 		Bottom: info.Window.Bottom,
 		Left:   0,
@@ -28,7 +30,7 @@ func (h *windowsAnsiEventHandler) getCursorWindow(info *CONSOLE_SCREEN_BUFFER_IN
 }
 
 // setCursorPosition sets the cursor to the specified position, bounded to the screen size
-func (h *windowsAnsiEventHandler) setCursorPosition(position COORD, window SMALL_RECT) error {
+func (h *windowsAnsiEventHandler) setCursorPosition(position windows.Coord, window windows.SmallRect) error {
 	position.X = ensureInRange(position.X, window.Left, window.Right)
 	position.Y = ensureInRange(position.Y, window.Top, window.Bottom)
 	if err := SetConsoleCursorPosition(h.fd, position); err != nil {

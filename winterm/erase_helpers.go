@@ -2,17 +2,20 @@
 
 package winterm
 
-import "github.com/Azure/go-ansiterm"
+import (
+	"github.com/Azure/go-ansiterm"
+	"golang.org/x/sys/windows"
+)
 
-func (h *windowsAnsiEventHandler) clearRange(attributes uint16, fromCoord COORD, toCoord COORD) error {
+func (h *windowsAnsiEventHandler) clearRange(attributes uint16, fromCoord windows.Coord, toCoord windows.Coord) error {
 	// Ignore an invalid (negative area) request
 	if toCoord.Y < fromCoord.Y {
 		return nil
 	}
 
 	var (
-		coordStart         = COORD{}
-		coordEnd           = COORD{}
+		coordStart         = windows.Coord{}
+		coordEnd           = windows.Coord{}
 		xCurrent, yCurrent = fromCoord.X, fromCoord.Y
 		xEnd, yEnd         = toCoord.X, toCoord.Y
 	)
@@ -50,9 +53,9 @@ func (h *windowsAnsiEventHandler) clearRange(attributes uint16, fromCoord COORD,
 	return h.clearRect(attributes, coordStart, coordEnd)
 }
 
-func (h *windowsAnsiEventHandler) clearRect(attributes uint16, fromCoord COORD, toCoord COORD) error {
+func (h *windowsAnsiEventHandler) clearRect(attributes uint16, fromCoord windows.Coord, toCoord windows.Coord) error {
 	var (
-		region = SMALL_RECT{Top: fromCoord.Y, Left: fromCoord.X, Bottom: toCoord.Y, Right: toCoord.X}
+		region = windows.SmallRect{Top: fromCoord.Y, Left: fromCoord.X, Bottom: toCoord.Y, Right: toCoord.X}
 		width  = toCoord.X - fromCoord.X + 1
 		height = toCoord.Y - fromCoord.Y + 1
 		size   = uint32(width) * uint32(height)
@@ -68,5 +71,5 @@ func (h *windowsAnsiEventHandler) clearRect(attributes uint16, fromCoord COORD, 
 		buffer[i] = char
 	}
 
-	return WriteConsoleOutput(h.fd, buffer, COORD{X: width, Y: height}, COORD{X: 0, Y: 0}, &region)
+	return WriteConsoleOutput(h.fd, buffer, windows.Coord{X: width, Y: height}, windows.Coord{X: 0, Y: 0}, &region)
 }

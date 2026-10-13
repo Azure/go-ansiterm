@@ -155,7 +155,7 @@ type (
 	}
 
 	WINDOW_BUFFER_SIZE struct {
-		Size COORD
+		Size windows.Coord
 	}
 )
 
@@ -184,7 +184,7 @@ func SetConsoleCursorInfo(handle uintptr, cursorInfo *CONSOLE_CURSOR_INFO) error
 
 // SetConsoleCursorPosition location of the console cursor.
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms686025(v=vs.85).aspx.
-func SetConsoleCursorPosition(handle uintptr, coord COORD) error {
+func SetConsoleCursorPosition(handle uintptr, coord windows.Coord) error {
 	return windows.SetConsoleCursorPosition(windows.Handle(handle), windows.Coord(coord))
 }
 
@@ -203,7 +203,7 @@ func SetConsoleMode(handle uintptr, mode uint32) error {
 
 // GetConsoleScreenBufferInfo retrieves information about the specified console screen buffer.
 // See http://msdn.microsoft.com/en-us/library/windows/desktop/ms683171(v=vs.85).aspx.
-func GetConsoleScreenBufferInfo(handle uintptr) (*CONSOLE_SCREEN_BUFFER_INFO, error) {
+func GetConsoleScreenBufferInfo(handle uintptr) (*windows.ConsoleScreenBufferInfo, error) {
 	var info windows.ConsoleScreenBufferInfo
 	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(handle), &info); err != nil {
 		return nil, err
@@ -211,7 +211,7 @@ func GetConsoleScreenBufferInfo(handle uintptr) (*CONSOLE_SCREEN_BUFFER_INFO, er
 	return &info, nil
 }
 
-func ScrollConsoleScreenBuffer(handle uintptr, scrollRect SMALL_RECT, clipRect SMALL_RECT, destOrigin COORD, char CHAR_INFO) error {
+func ScrollConsoleScreenBuffer(handle uintptr, scrollRect windows.SmallRect, clipRect windows.SmallRect, destOrigin windows.Coord, char CHAR_INFO) error {
 	r1, r2, err := scrollConsoleScreenBufferProc.Call(handle, uintptr(unsafe.Pointer(&scrollRect)), uintptr(unsafe.Pointer(&clipRect)), coordToPointer(destOrigin), uintptr(unsafe.Pointer(&char)))
 	runtime.KeepAlive(scrollRect)
 	runtime.KeepAlive(clipRect)
@@ -222,7 +222,7 @@ func ScrollConsoleScreenBuffer(handle uintptr, scrollRect SMALL_RECT, clipRect S
 
 // SetConsoleScreenBufferSize sets the size of the console screen buffer.
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms686044(v=vs.85).aspx.
-func SetConsoleScreenBufferSize(handle uintptr, coord COORD) error {
+func SetConsoleScreenBufferSize(handle uintptr, coord windows.Coord) error {
 	r1, r2, err := setConsoleScreenBufferSizeProc.Call(handle, coordToPointer(coord))
 	runtime.KeepAlive(coord)
 	return checkError(r1, r2, err)
@@ -240,7 +240,7 @@ func SetConsoleTextAttribute(handle uintptr, attribute uint16) error {
 // SetConsoleWindowInfo sets the size and position of the console screen buffer's window.
 // Note that the size and location must be within and no larger than the backing console screen buffer.
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms686125(v=vs.85).aspx.
-func SetConsoleWindowInfo(handle uintptr, isAbsolute bool, rect SMALL_RECT) error {
+func SetConsoleWindowInfo(handle uintptr, isAbsolute bool, rect windows.SmallRect) error {
 	r1, r2, err := setConsoleWindowInfoProc.Call(handle, uintptr(boolToBOOL(isAbsolute)), uintptr(unsafe.Pointer(&rect)))
 	runtime.KeepAlive(isAbsolute)
 	runtime.KeepAlive(rect)
@@ -249,7 +249,7 @@ func SetConsoleWindowInfo(handle uintptr, isAbsolute bool, rect SMALL_RECT) erro
 
 // WriteConsoleOutput writes the CHAR_INFOs from the provided buffer to the active console buffer.
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms687404(v=vs.85).aspx.
-func WriteConsoleOutput(handle uintptr, buffer []CHAR_INFO, bufferSize COORD, bufferCoord COORD, writeRegion *SMALL_RECT) error {
+func WriteConsoleOutput(handle uintptr, buffer []CHAR_INFO, bufferSize windows.Coord, bufferCoord windows.Coord, writeRegion *windows.SmallRect) error {
 	r1, r2, err := writeConsoleOutputProc.Call(handle, uintptr(unsafe.Pointer(&buffer[0])), coordToPointer(bufferSize), coordToPointer(bufferCoord), uintptr(unsafe.Pointer(writeRegion)))
 	runtime.KeepAlive(buffer)
 	runtime.KeepAlive(bufferSize)
@@ -298,8 +298,8 @@ func checkError(r1, r2 uintptr, err error) error {
 	return syscall.EINVAL
 }
 
-// coordToPointer converts a COORD into a uintptr (by fooling the type system).
-func coordToPointer(c COORD) uintptr {
+// coordToPointer converts a windows.Coord into a uintptr (by fooling the type system).
+func coordToPointer(c windows.Coord) uintptr {
 	// Note: This code assumes the two SHORTs are correctly laid out; the "cast" to uint32 is just to get a pointer to pass.
 	return uintptr(*((*uint32)(unsafe.Pointer(&c))))
 }
