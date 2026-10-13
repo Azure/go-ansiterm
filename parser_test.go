@@ -106,6 +106,20 @@ func TestScroll(t *testing.T) {
 	scrollHelper(t, 'T', "SD")
 }
 
+func TestOscStringUTF8Continuation(t *testing.T) {
+	// U+0410 is D0 90. 0x90 is also DCS. U+2014 is E2 80 94, and 0x80
+	// would otherwise return to ground from inside the title.
+	for _, title := range []string{"\xd0\x90", "\xe2\x80\x94"} {
+		parser, evtHandler := createTestParser("Ground")
+		input := []byte("\x1b]0;" + title + "\x07X")
+		if _, err := parser.Parse(input); err != nil {
+			t.Fatalf("%q: %v", title, err)
+		}
+		validateState(t, parser.currState, "Ground")
+		validateFuncCalls(t, evtHandler.FunctionCalls, []string{"Print([X])"})
+	}
+}
+
 func TestPrint(t *testing.T) {
 	parser, evtHandler := createTestParser("Ground")
 	if _, err := parser.Parse(printables); err != nil {
