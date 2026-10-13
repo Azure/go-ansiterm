@@ -33,7 +33,7 @@ func (h *windowsAnsiEventHandler) getCursorWindow(info *windows.ConsoleScreenBuf
 func (h *windowsAnsiEventHandler) setCursorPosition(position windows.Coord, window windows.SmallRect) error {
 	position.X = ensureInRange(position.X, window.Left, window.Right)
 	position.Y = ensureInRange(position.Y, window.Top, window.Bottom)
-	if err := SetConsoleCursorPosition(h.fd, position); err != nil {
+	if err := windows.SetConsoleCursorPosition(windows.Handle(h.fd), position); err != nil {
 		return err
 	}
 	h.logf("Cursor position set: (%d, %d)", position.X, position.Y)
@@ -49,8 +49,8 @@ func (h *windowsAnsiEventHandler) moveCursorHorizontal(param int) error {
 }
 
 func (h *windowsAnsiEventHandler) moveCursor(moveMode int, param int) error {
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle((h.fd), &info); err != nil {
 		return err
 	}
 
@@ -67,7 +67,7 @@ func (h *windowsAnsiEventHandler) moveCursor(moveMode int, param int) error {
 		position.X = int16(param) - 1
 	}
 
-	return h.setCursorPosition(position, h.getCursorWindow(info))
+	return h.setCursorPosition(position, h.getCursorWindow(&info))
 }
 
 func (h *windowsAnsiEventHandler) moveCursorLine(param int) error {

@@ -130,13 +130,19 @@ type (
 	}
 
 	// CONSOLE_SCREEN_BUFFER_INFO is identical to [windows.ConsoleScreenBufferInfo].
+	//
+	// Deprecated: use [windows.ConsoleScreenBufferInfo].
 	CONSOLE_SCREEN_BUFFER_INFO = windows.ConsoleScreenBufferInfo
 
 	// COORD is identical to [windows.Coord].
+	//
+	// Deprecated: use [windows.Coord].
 	COORD = windows.Coord
 
 	// SMALL_RECT is identical to [windows.SmallRect].
-	SMALL_RECT = windows.SmallRect
+	//
+	// Deprecated: use [windows.SmallRect].
+	SMALL_RECT windows.SmallRect
 
 	// INPUT_RECORD is a C/C++ union of which KEY_EVENT_RECORD is one case, it is also the largest
 	// See https://msdn.microsoft.com/en-us/library/windows/desktop/ms683499(v=vs.85).aspx.
@@ -184,12 +190,16 @@ func SetConsoleCursorInfo(handle uintptr, cursorInfo *CONSOLE_CURSOR_INFO) error
 
 // SetConsoleCursorPosition location of the console cursor.
 // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms686025(v=vs.85).aspx.
+//
+// Deprecated: use [windows.SetConsoleCursorPosition].
 func SetConsoleCursorPosition(handle uintptr, coord windows.Coord) error {
-	return windows.SetConsoleCursorPosition(windows.Handle(handle), windows.Coord(coord))
+	return windows.SetConsoleCursorPosition(windows.Handle(handle), coord)
 }
 
 // GetConsoleMode gets the console mode for the given handle.
 // See http://msdn.microsoft.com/en-us/library/windows/desktop/ms683167(v=vs.85).aspx.
+//
+// Deprecated: use [windows.GetConsoleMode].
 func GetConsoleMode(handle uintptr) (mode uint32, err error) {
 	err = windows.GetConsoleMode(windows.Handle(handle), &mode)
 	return mode, err
@@ -197,12 +207,16 @@ func GetConsoleMode(handle uintptr) (mode uint32, err error) {
 
 // SetConsoleMode sets the console mode for the given handle.
 // See http://msdn.microsoft.com/en-us/library/windows/desktop/ms686033(v=vs.85).aspx.
+//
+// Deprecated: use [windows.SetConsoleMode].
 func SetConsoleMode(handle uintptr, mode uint32) error {
 	return windows.SetConsoleMode(windows.Handle(handle), mode)
 }
 
 // GetConsoleScreenBufferInfo retrieves information about the specified console screen buffer.
 // See http://msdn.microsoft.com/en-us/library/windows/desktop/ms683171(v=vs.85).aspx.
+//
+// Deprecated: use [windows.GetConsoleScreenBufferInfo].
 func GetConsoleScreenBufferInfo(handle uintptr) (*windows.ConsoleScreenBufferInfo, error) {
 	var info windows.ConsoleScreenBufferInfo
 	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(handle), &info); err != nil {

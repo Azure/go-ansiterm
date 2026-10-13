@@ -16,11 +16,11 @@ func (h *windowsAnsiEventHandler) effectiveSr(window windows.SmallRect) scrollRe
 }
 
 func (h *windowsAnsiEventHandler) scrollUp(param int) error {
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 		return err
 	}
-	return h.scroll(param, h.effectiveSr(info.Window), info)
+	return h.scroll(param, h.effectiveSr(info.Window), &info)
 }
 
 func (h *windowsAnsiEventHandler) scrollDown(param int) error {
@@ -28,8 +28,8 @@ func (h *windowsAnsiEventHandler) scrollDown(param int) error {
 }
 
 func (h *windowsAnsiEventHandler) deleteLines(param int) error {
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle((h.fd), &info); err != nil {
 		return err
 	}
 
@@ -38,7 +38,7 @@ func (h *windowsAnsiEventHandler) deleteLines(param int) error {
 	// Lines cannot be inserted or deleted outside the scrolling region.
 	if start >= sr.top && start <= sr.bottom {
 		sr.top = start
-		return h.scroll(param, sr, info)
+		return h.scroll(param, sr, &info)
 	}
 	return nil
 }
@@ -75,11 +75,11 @@ func (h *windowsAnsiEventHandler) scroll(param int, sr scrollRegion, info *windo
 }
 
 func (h *windowsAnsiEventHandler) deleteCharacters(param int) error {
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle((h.fd), &info); err != nil {
 		return err
 	}
-	return h.scrollLine(param, info.CursorPosition, info)
+	return h.scrollLine(param, info.CursorPosition, &info)
 }
 
 func (h *windowsAnsiEventHandler) insertCharacters(param int) error {

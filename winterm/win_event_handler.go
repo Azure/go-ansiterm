@@ -38,15 +38,15 @@ func WithLogf(f func(string, ...interface{})) Option {
 }
 
 func CreateWinEventHandler(fd uintptr, file *os.File, opts ...Option) ansiterm.AnsiEventHandler {
-	infoReset, err := GetConsoleScreenBufferInfo(fd)
-	if err != nil {
+	var infoReset windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(fd), &infoReset); err != nil {
 		return nil
 	}
 
 	h := &windowsAnsiEventHandler{
 		fd:         fd,
 		file:       file,
-		infoReset:  infoReset,
+		infoReset:  &infoReset,
 		attributes: infoReset.Attributes,
 	}
 	for _, o := range opts {
@@ -121,7 +121,7 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 		}
 		if includeCR {
 			pos.X = 0
-			if err := SetConsoleCursorPosition(h.fd, pos); err != nil {
+			if err := windows.SetConsoleCursorPosition(windows.Handle(h.fd), pos); err != nil {
 				return false, err
 			}
 		}
@@ -145,7 +145,7 @@ func (h *windowsAnsiEventHandler) simulateLF(includeCR bool) (bool, error) {
 				return false, err
 			}
 			pos.X = 0
-			if err := SetConsoleCursorPosition(h.fd, pos); err != nil {
+			if err := windows.SetConsoleCursorPosition(windows.Handle(h.fd), pos); err != nil {
 				return false, err
 			}
 		}
@@ -174,7 +174,7 @@ func (h *windowsAnsiEventHandler) executeLF() error {
 		return err
 	}
 	h.logf("Resetting cursor position for LF without CR")
-	return SetConsoleCursorPosition(h.fd, pos)
+	return windows.SetConsoleCursorPosition(windows.Handle(h.fd), pos)
 }
 
 func (h *windowsAnsiEventHandler) Print(b byte) error {
@@ -217,7 +217,7 @@ func (h *windowsAnsiEventHandler) Execute(b byte) error {
 			if err := h.Flush(); err != nil {
 				return err
 			}
-			if err := SetConsoleCursorPosition(h.fd, pos); err != nil {
+			if err := windows.SetConsoleCursorPosition(windows.Handle(h.fd), pos); err != nil {
 				return err
 			}
 		}
@@ -351,11 +351,11 @@ func (h *windowsAnsiEventHandler) VPA(param int) error {
 	}
 	h.logf("VPA: [[%d]]", param)
 	h.clearWrap()
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 		return err
 	}
-	window := h.getCursorWindow(info)
+	window := h.getCursorWindow(&info)
 	position := info.CursorPosition
 	position.Y = window.Top + int16(param) - 1
 	return h.setCursorPosition(position, window)
@@ -367,12 +367,12 @@ func (h *windowsAnsiEventHandler) CUP(row int, col int) error {
 	}
 	h.logf("CUP: [[%d %d]]", row, col)
 	h.clearWrap()
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 		return err
 	}
 
-	window := h.getCursorWindow(info)
+	window := h.getCursorWindow(&info)
 	position := windows.Coord{X: window.Left + int16(col) - 1, Y: window.Top + int16(row) - 1}
 	return h.setCursorPosition(position, window)
 }
@@ -414,8 +414,8 @@ func (h *windowsAnsiEventHandler) DECCOLM(use132 bool) error {
 	if err := h.ED(2); err != nil {
 		return err
 	}
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 		return err
 	}
 	targetWidth := int16(80)
@@ -441,7 +441,7 @@ func (h *windowsAnsiEventHandler) DECCOLM(use132 bool) error {
 			return err
 		}
 	}
-	return SetConsoleCursorPosition(h.fd, windows.Coord{X: 0, Y: 0})
+	return windows.SetConsoleCursorPosition(windows.Handle(h.fd), windows.Coord{X: 0, Y: 0})
 }
 
 func (h *windowsAnsiEventHandler) ED(param int) error {
@@ -457,8 +457,8 @@ func (h *windowsAnsiEventHandler) ED(param int) error {
 	// Notes:
 	// -- Clearing the entire buffer, versus just the Window, works best for Windows Consoles
 
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 		return err
 	}
 
@@ -490,7 +490,7 @@ func (h *windowsAnsiEventHandler) ED(param int) error {
 		pos.Y -= window.Top
 		window.Bottom -= window.Top
 		window.Top = 0
-		if err := SetConsoleCursorPosition(h.fd, pos); err != nil {
+		if err := windows.SetConsoleCursorPosition(windows.Handle(h.fd), pos); err != nil {
 			return err
 		}
 		return SetConsoleWindowInfo(h.fd, true, window)
@@ -510,8 +510,8 @@ func (h *windowsAnsiEventHandler) EL(param int) error {
 	// [1K -- Erases from the beginning of the line to the cursor, including the cursor position.
 	// [2K -- Erases the complete line.
 
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 		return err
 	}
 
@@ -651,8 +651,8 @@ func (h *windowsAnsiEventHandler) RI() error {
 	h.logf("RI: []")
 	h.clearWrap()
 
-	info, err := GetConsoleScreenBufferInfo(h.fd)
-	if err != nil {
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 		return err
 	}
 
@@ -681,8 +681,8 @@ func (h *windowsAnsiEventHandler) Flush() error {
 	if h.wrapNext && !h.drewMarginByte {
 		h.logf("Flush: drawing margin byte '%c'", h.marginByte)
 
-		info, err := GetConsoleScreenBufferInfo(h.fd)
-		if err != nil {
+		var info windows.ConsoleScreenBufferInfo
+		if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 			return err
 		}
 
@@ -704,11 +704,11 @@ func (h *windowsAnsiEventHandler) Flush() error {
 // since the last call to Flush(). It must be called before accessing h.curInfo or h.curPos.
 func (h *windowsAnsiEventHandler) getCurrentInfo() (windows.Coord, *windows.ConsoleScreenBufferInfo, error) {
 	if h.curInfo == nil {
-		info, err := GetConsoleScreenBufferInfo(h.fd)
-		if err != nil {
+		var info windows.ConsoleScreenBufferInfo
+		if err := windows.GetConsoleScreenBufferInfo(windows.Handle(h.fd), &info); err != nil {
 			return windows.Coord{}, nil, err
 		}
-		h.curInfo = info
+		h.curInfo = &info
 		h.curPos = info.CursorPosition
 	}
 	return h.curPos, h.curInfo, nil
