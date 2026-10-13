@@ -130,19 +130,13 @@ type (
 	}
 
 	// CONSOLE_SCREEN_BUFFER_INFO is identical to [windows.ConsoleScreenBufferInfo].
-	CONSOLE_SCREEN_BUFFER_INFO struct {
-		Size              COORD
-		CursorPosition    COORD
-		Attributes        uint16
-		Window            SMALL_RECT
-		MaximumWindowSize COORD
-	}
+	CONSOLE_SCREEN_BUFFER_INFO = windows.ConsoleScreenBufferInfo
 
 	// COORD is identical to [windows.Coord].
-	COORD windows.Coord
+	COORD = windows.Coord
 
 	// SMALL_RECT is identical to [windows.SmallRect].
-	SMALL_RECT windows.SmallRect
+	SMALL_RECT = windows.SmallRect
 
 	// INPUT_RECORD is a C/C++ union of which KEY_EVENT_RECORD is one case, it is also the largest
 	// See https://msdn.microsoft.com/en-us/library/windows/desktop/ms683499(v=vs.85).aspx.
@@ -214,14 +208,7 @@ func GetConsoleScreenBufferInfo(handle uintptr) (*CONSOLE_SCREEN_BUFFER_INFO, er
 	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(handle), &info); err != nil {
 		return nil, err
 	}
-
-	return &CONSOLE_SCREEN_BUFFER_INFO{
-		Size:              COORD(info.Size),
-		CursorPosition:    COORD(info.CursorPosition),
-		Attributes:        info.Attributes,
-		Window:            SMALL_RECT(info.Window),
-		MaximumWindowSize: COORD(info.MaximumWindowSize),
-	}, nil
+	return &info, nil
 }
 
 func ScrollConsoleScreenBuffer(handle uintptr, scrollRect SMALL_RECT, clipRect SMALL_RECT, destOrigin COORD, char CHAR_INFO) error {
