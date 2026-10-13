@@ -169,9 +169,7 @@ func (h *windowsAnsiEventHandler) executeLF() error {
 				return err
 			}
 			h.logf("Resetting cursor position for LF without CR")
-			if err := SetConsoleCursorPosition(h.fd, pos); err != nil {
-				return err
-			}
+			return SetConsoleCursorPosition(h.fd, pos)
 		}
 	}
 	return nil
@@ -495,9 +493,7 @@ func (h *windowsAnsiEventHandler) ED(param int) error {
 		if err := SetConsoleCursorPosition(h.fd, pos); err != nil {
 			return err
 		}
-		if err := SetConsoleWindowInfo(h.fd, true, window); err != nil {
-			return err
-		}
+		return SetConsoleWindowInfo(h.fd, true, window)
 	}
 
 	return nil
@@ -536,12 +532,7 @@ func (h *windowsAnsiEventHandler) EL(param int) error {
 		end = COORD{info.Size.X, info.CursorPosition.Y}
 	}
 
-	err = h.clearRange(h.attributes, start, end)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return h.clearRange(h.attributes, start, end)
 }
 
 func (h *windowsAnsiEventHandler) IL(param int) error {
@@ -611,12 +602,7 @@ func (h *windowsAnsiEventHandler) SGR(params []int) error {
 	if h.inverted {
 		attributes = invertAttributes(attributes)
 	}
-	err := SetConsoleTextAttribute(h.fd, attributes)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return SetConsoleTextAttribute(h.fd, attributes)
 }
 
 func (h *windowsAnsiEventHandler) SU(param int) error {
