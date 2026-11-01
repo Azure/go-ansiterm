@@ -10,7 +10,7 @@ func (ap *AnsiParser) collectParam() error {
 func (ap *AnsiParser) collectInter() error {
 	currChar := ap.context.currentChar
 	ap.logf("collectInter %#x", currChar)
-	ap.context.paramBuffer = append(ap.context.interBuffer, currChar)
+	ap.context.interBuffer = append(ap.context.interBuffer, currChar)
 	return nil
 }
 
